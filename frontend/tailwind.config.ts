@@ -24,7 +24,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ["var(--font-archivo)", "sans-serif"],
+        display: ["var(--font-display)", "sans-serif"],
         body: ["var(--font-inter)", "sans-serif"],
         mono: ["var(--font-jetbrains)", "monospace"],
         script: ["var(--font-script)", "cursive"],

@@ -15,7 +15,6 @@ export default function Landing() {
   const { authed, login, ready } = useAuth();
   const [fixtures, setFixtures] = useState<any[]>([]);
   const [markets, setMarkets] = useState<MarketT[]>([]);
-  const [stats, setStats] = useState<any>(null);
   const rootRef = useRef<HTMLElement>(null);
 
   const featured = useMemo(() => {
@@ -30,7 +29,6 @@ export default function Landing() {
     try {
       const br = await api("/bracket");
       setFixtures(br.fixtures);
-      setStats(await api("/stats"));
     } catch {}
   }
   useEffect(() => {
@@ -105,17 +103,6 @@ export default function Landing() {
         {/* hero content — sits in the dark left third */}
         <div className="relative z-10 mx-auto flex min-h-[calc(100svh-88px)] max-w-7xl flex-col justify-end px-6 pb-16 sm:justify-center sm:pb-0">
           <div className="max-w-2xl reveal">
-            {isLive ? (
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-kickr-yellow/40 bg-kickr-yellow/10 px-3 py-1 text-sm font-semibold text-kickr-yellow">
-                <span className="pulse-dot" />
-                LIVE now · {featured.home} v {featured.away}
-              </div>
-            ) : (
-              <div className="mb-6 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-kickr-cream-dim">
-                World Cup 2026 · play-money
-              </div>
-            )}
-
             <h1 className="font-display text-5xl leading-[0.95] text-kickr-cream sm:text-6xl lg:text-7xl" style={{ textWrap: "balance" as any }}>
               Markets that <span className="text-kickr-yellow">live</span> inside the match.
             </h1>
@@ -130,7 +117,7 @@ export default function Landing() {
                 onClick={login}
                 className="rounded-xl bg-kickr-yellow px-7 py-4 text-lg font-bold text-kickr-navy shadow-live-glow transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0"
               >
-                Start with 1,000 free chips
+                Get started
               </button>
               <a
                 href="#live"
@@ -200,7 +187,7 @@ export default function Landing() {
             onClick={login}
             className="rounded-xl bg-kickr-yellow px-6 py-3.5 font-bold text-kickr-navy transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0"
           >
-            Place your first bet →
+            Get started →
           </button>
         </div>
       </section>
@@ -224,23 +211,11 @@ export default function Landing() {
 
       {/* ---------------------------------------------------------------- footer */}
       <footer className="border-t border-kickr-navy-line">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-10 gap-y-4 px-6 py-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-8">
           <Wordmark className="text-2xl text-kickr-cream" />
-          <span className="font-mono text-sm text-kickr-cream-dim">
-            <b className="text-kickr-cream">{stats?.markets_settled ?? "–"}</b> settled ·{" "}
-            <b className="text-kickr-cream">{stats?.markets_active ?? "–"}</b> active now
-          </span>
-          {stats?.sample_receipt && (
-            <a
-              href={stats.sample_receipt}
-              target="_blank"
-              rel="noreferrer"
-              className="font-mono text-sm text-kickr-cream-dim underline-offset-4 hover:text-kickr-yellow"
-            >
-              sample on-chain receipt ↗
-            </a>
-          )}
-          <span className="ml-auto text-sm text-kickr-cream-dim">play-money · 2026</span>
+          <button onClick={login} className="text-sm font-semibold text-kickr-cream-dim hover:text-kickr-yellow">
+            Get started →
+          </button>
         </div>
       </footer>
     </main>
