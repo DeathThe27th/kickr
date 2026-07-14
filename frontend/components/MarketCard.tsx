@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { OddsNum } from "./shared";
 
 export type MarketT = {
@@ -28,41 +28,51 @@ export function MarketCard({
 }) {
   const settled = market.status === "settled" || market.status === "voided";
   const receipt = market.receipt_settle_sig ?? market.receipt_open_sig;
+  const suspended = market.status === "suspended";
+
   return (
     <div
-      className={`rounded-xl border border-kickr-line bg-white p-3 ${justSettled ? "settle-sweep" : ""} ${
-        market.status === "suspended" ? "opacity-60" : ""
-      }`}
+      className={`rounded-xl border border-kickr-navy-line bg-kickr-navy-surface p-3.5 ${
+        justSettled ? "settle-sweep" : ""
+      } ${suspended ? "opacity-60" : ""}`}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-sm font-semibold">{market.question}</p>
-        <span className="shrink-0 text-[10px] uppercase tracking-wide text-kickr-ink/50">
+        <p className="text-sm font-semibold text-kickr-cream">{market.question}</p>
+        <span
+          className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide ${
+            suspended ? "text-kickr-loss" : "text-kickr-cream-dim"
+          }`}
+        >
           {market.status === "open" ? market.template_id : market.status}
         </span>
       </div>
+
       {!settled ? (
-        <div className="mt-2 grid grid-flow-col gap-2">
+        <div className="mt-2.5 grid grid-flow-col gap-2">
           {market.outcomes.map((o) => (
             <button
               key={o}
               disabled={readOnly || market.status !== "open"}
               onClick={() => onPick?.(o)}
-              className="flex items-center justify-between gap-2 rounded-lg border border-kickr-line px-3 py-2 text-sm transition-colors enabled:hover:border-kickr-yellow-deep enabled:hover:bg-kickr-yellow/20 disabled:cursor-default"
+              className="flex items-center justify-between gap-2 rounded-lg border border-kickr-navy-line bg-kickr-navy px-3 py-2.5 text-sm text-kickr-cream/90 transition-all enabled:hover:-translate-y-px enabled:hover:border-kickr-yellow/60 enabled:hover:text-kickr-cream disabled:cursor-default disabled:opacity-80"
             >
               <span>{o}</span>
-              <OddsNum value={market.prices?.[o]} />
+              <span className="text-kickr-yellow">
+                <OddsNum value={market.prices?.[o]} />
+              </span>
             </button>
           ))}
         </div>
       ) : (
         <div className="mt-2 text-sm">
           {market.status === "voided" ? (
-            <span className="text-kickr-ink/60">Voided — stakes refunded</span>
+            <span className="text-kickr-cream-dim">Voided — stakes refunded</span>
           ) : (
-            <span>
-              Settled: <b>{market.settlement?.winning_outcome}</b>
+            <span className="text-kickr-cream/90">
+              Settled:{" "}
+              <b className="text-kickr-yellow">{market.settlement?.winning_outcome}</b>
               {market.settlement?.evidence?.score && (
-                <span className="num text-kickr-ink/60">
+                <span className="num text-kickr-cream-dim">
                   {" "}
                   ({market.settlement.evidence.score.join("-")}
                   {market.settlement.evidence.minute != null && ` @ ${market.settlement.evidence.minute}'`})
@@ -72,7 +82,7 @@ export function MarketCard({
           )}
           {receipt && (
             <a
-              className="ml-2 text-xs underline decoration-kickr-yellow-deep underline-offset-2 hover:text-kickr-yellow-deep"
+              className="ml-2 text-xs text-kickr-cream-dim underline decoration-kickr-yellow/50 underline-offset-2 hover:text-kickr-yellow"
               href={`https://explorer.solana.com/tx/${receipt}?cluster=devnet`}
               target="_blank"
               rel="noreferrer"

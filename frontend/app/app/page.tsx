@@ -1,8 +1,8 @@
 "use client";
 
-/** Authed home = the bracket (build.md §8.2).
- *  - Live Now card pinned when any fixture is in-play (or next-kickoff countdown).
- *  - The 2026 knockout tree (bracket) + a group-stage tab.
+/** Authed home = the bracket (build.md §8.2), dark system.
+ *  - Live Now hero card pinned when a fixture is in-play (or next-kickoff countdown).
+ *  - The 2026 knockout tree (interactive node cards) + a group-stage tab.
  *  - Tap a node -> drawer with Markets / Live / History tabs and the stake flow.
  */
 
@@ -13,17 +13,16 @@ import { AppNav } from "@/components/Nav";
 import { Bracket, GroupList, FixtureT } from "@/components/Bracket";
 import { MarketCard, MarketT } from "@/components/MarketCard";
 import { StakeSheet } from "@/components/StakeSheet";
-import { LivePill, Toast, Wordmark } from "@/components/shared";
+import { LivePill, Toast } from "@/components/shared";
 
 export default function AppHome() {
-  const { authed, ready, getToken, login } = useAuth();
+  const { authed, ready, getToken } = useAuth();
   const [me, setMe] = useState<any>(null);
   const [fixtures, setFixtures] = useState<FixtureT[]>([]);
   const [tab, setTab] = useState<"bracket" | "group">("bracket");
   const [open, setOpen] = useState<FixtureT | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  // ---- gate: redirect to landing if not signed in
   useEffect(() => {
     if (ready && !authed) location.href = "/";
   }, [ready, authed]);
@@ -49,7 +48,7 @@ export default function AppHome() {
       if (["market_open", "market_locked", "market_settled", "score_update", "demo_restarted"].includes(ev.event)) {
         loadBracket();
       }
-      if (ev.event === "market_settled") loadMe(); // payouts may have landed
+      if (ev.event === "market_settled") loadMe();
     });
     const t = setInterval(loadBracket, 10000);
     return () => {
@@ -58,7 +57,6 @@ export default function AppHome() {
     };
   }, [ready, authed, loadMe, loadBracket]);
 
-  // keep the open drawer's fixture object fresh as the bracket updates
   useEffect(() => {
     if (!open) return;
     const fresh = fixtures.find((f) => f.id === open.id);
@@ -91,19 +89,14 @@ export default function AppHome() {
   if (!ready || !authed) return null;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-kickr-navy text-kickr-cream">
       <AppNav me={me} onFaucet={faucet} />
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        <LiveNow
-          live={liveFixtures}
-          next={nextFixture}
-          onOpen={setOpen}
-          onPick={() => {}}
-        />
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+        <LiveNow live={liveFixtures} next={nextFixture} onOpen={setOpen} />
 
         {/* tabs */}
-        <div className="mb-4 mt-8 flex items-center gap-2">
+        <div className="mb-5 mt-10 flex items-center gap-2">
           <TabButton active={tab === "bracket"} onClick={() => setTab("bracket")}>
             Bracket
           </TabButton>
@@ -118,9 +111,7 @@ export default function AppHome() {
           bracketFixtures.length ? (
             <Bracket fixtures={bracketFixtures} onOpen={setOpen} />
           ) : (
-            <p className="py-12 text-center text-sm text-kickr-ink/50">
-              Knockout fixtures appear here once the draw is set.
-            </p>
+            <EmptyState>Knockout fixtures appear here once the draw is set.</EmptyState>
           )
         ) : (
           <GroupList fixtures={fixtures} onOpen={setOpen} />
@@ -143,12 +134,22 @@ export default function AppHome() {
   );
 }
 
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-kickr-navy-line py-16 text-center text-sm text-kickr-cream-dim">
+      {children}
+    </div>
+  );
+}
+
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
       className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-        active ? "bg-kickr-ink text-white" : "border border-kickr-line text-kickr-ink/70 hover:border-kickr-yellow-deep"
+        active
+          ? "bg-kickr-yellow text-kickr-navy"
+          : "border border-kickr-navy-line text-kickr-cream-dim hover:border-kickr-yellow/40 hover:text-kickr-cream"
       }`}
     >
       {children}
@@ -165,11 +166,10 @@ function LiveNow({
   live: FixtureT[];
   next: FixtureT | null;
   onOpen: (f: FixtureT) => void;
-  onPick: () => void;
 }) {
   if (live.length > 0) {
     return (
-      <div className="grid gap-4">
+      <div className="grid gap-5">
         {live.map((f) => (
           <LiveFixtureCard key={f.id} f={f} onOpen={onOpen} />
         ))}
@@ -177,11 +177,7 @@ function LiveNow({
     );
   }
   if (next) return <NextKickoff f={next} onOpen={onOpen} />;
-  return (
-    <div className="rounded-2xl border border-kickr-line p-6 text-center text-sm text-kickr-ink/50">
-      No fixtures scheduled right now.
-    </div>
-  );
+  return <EmptyState>No fixtures scheduled right now.</EmptyState>;
 }
 
 function LiveFixtureCard({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => void }) {
@@ -205,26 +201,34 @@ function LiveFixtureCard({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => 
   const hot = markets.filter((m) => m.status === "open").slice(0, 3);
 
   return (
-    <div className="rounded-2xl border border-kickr-yellow-deep bg-kickr-yellow/20 p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+    <div className="relative overflow-hidden rounded-3xl border border-kickr-yellow/40 bg-kickr-navy-surface shadow-live-glow">
+      {/* live glow wash */}
+      <div className="pointer-events-none absolute -top-24 right-0 h-48 w-2/3 bg-kickr-yellow/10 blur-3xl" />
+
+      <div className="relative flex flex-wrap items-center justify-between gap-4 border-b border-kickr-navy-line px-6 py-5">
+        <div className="flex items-center gap-4">
           <LivePill minute={f.minute} />
-          <button onClick={() => onOpen(f)} className="font-display text-xl hover:underline">
-            {f.home} <span className="num">{f.score.join("–")}</span> {f.away}
+          <button onClick={() => onOpen(f)} className="text-left">
+            <span className="font-display text-2xl text-kickr-cream sm:text-3xl">
+              {f.home} <span className="num text-kickr-yellow">{f.score.join("–")}</span> {f.away}
+            </span>
           </button>
         </div>
         <button
           onClick={() => onOpen(f)}
-          className="rounded-full bg-kickr-ink px-3 py-1 text-sm font-semibold text-kickr-yellow"
+          className="rounded-full bg-kickr-yellow px-4 py-2 text-sm font-bold text-kickr-navy transition-transform hover:-translate-y-0.5 active:translate-y-0"
         >
           Open all markets →
         </button>
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+
+      <div className="relative grid gap-3 p-5 sm:grid-cols-3">
         {hot.length ? (
           hot.map((m) => <MarketCard key={m.id} market={m} onPick={() => onOpen(f)} />)
         ) : (
-          <p className="text-sm text-kickr-ink/60">New micro markets open on the next goal…</p>
+          <p className="py-6 text-center text-sm text-kickr-cream-dim sm:col-span-3">
+            New micro markets open on the next goal…
+          </p>
         )}
       </div>
     </div>
@@ -241,16 +245,16 @@ function NextKickoff({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => void
   return (
     <button
       onClick={() => onOpen(f)}
-      className="block w-full rounded-2xl border border-kickr-line p-6 text-left hover:border-kickr-yellow-deep"
+      className="block w-full rounded-3xl border border-kickr-navy-line bg-kickr-navy-surface p-6 text-left transition-colors hover:border-kickr-yellow/40"
     >
-      <p className="text-xs font-semibold uppercase tracking-widest text-kickr-ink/50">Next kickoff</p>
-      <div className="mt-2 flex flex-wrap items-baseline justify-between gap-3">
-        <span className="font-display text-xl">
-          {f.home} <span className="text-kickr-ink/40">vs</span> {f.away}
+      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-kickr-cream-dim">Next kickoff</p>
+      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-3">
+        <span className="font-display text-2xl text-kickr-cream">
+          {f.home} <span className="text-kickr-cream-dim">v</span> {f.away}
         </span>
-        <span className="num text-3xl font-bold">{fmtClock(secs)}</span>
+        <span className="num text-4xl font-bold text-kickr-yellow">{fmtClock(secs)}</span>
       </div>
-      <p className="mt-1 text-sm text-kickr-ink/60">Tap for pre-match markets →</p>
+      <p className="mt-2 text-sm text-kickr-cream-dim">Tap for pre-match markets →</p>
     </button>
   );
 }
@@ -277,7 +281,6 @@ function FixtureDrawer({
     try {
       const r = await api(`/fixtures/${fixture.id}/markets?include=settled`);
       const next: MarketT[] = r.markets;
-      // detect fresh settlements for the yellow sweep
       const newlySettled = new Set<string>();
       for (const m of next) {
         const prev = prevStatuses.current[m.id];
@@ -306,40 +309,48 @@ function FixtureDrawer({
   const history = markets.filter((m) => ["settled", "voided"].includes(m.status));
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-kickr-ink/40 sm:items-stretch sm:justify-end" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-40 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-stretch sm:justify-end"
+      onClick={onClose}
+    >
       <div
-        className="flex max-h-[92vh] w-full flex-col rounded-t-2xl border border-kickr-line bg-white sm:max-h-full sm:w-[28rem] sm:rounded-none sm:border-l"
+        className="flex max-h-[92vh] w-full flex-col rounded-t-3xl border border-kickr-navy-line bg-kickr-navy sm:max-h-full sm:w-[30rem] sm:rounded-none sm:border-l"
         onClick={(e) => e.stopPropagation()}
       >
         {/* header */}
-        <div className="flex items-start justify-between border-b border-kickr-line p-4">
+        <div className="flex items-start justify-between border-b border-kickr-navy-line px-5 py-4">
           <div>
             <div className="flex items-center gap-2">
               {fixture.status === "live" && <LivePill minute={fixture.minute} />}
-              <h2 className="font-display text-lg">
-                {fixture.home} {(fixture.status === "live" || fixture.status === "finished") && (
-                  <span className="num">{fixture.score.join("–")}</span>
+              <h2 className="font-display text-lg text-kickr-cream">
+                {fixture.home}{" "}
+                {(fixture.status === "live" || fixture.status === "finished") && (
+                  <span className="num text-kickr-yellow">{fixture.score.join("–")}</span>
                 )}{" "}
                 {fixture.away}
               </h2>
             </div>
-            <p className="mt-0.5 text-xs uppercase tracking-wide text-kickr-ink/50">
+            <p className="mt-1 text-xs uppercase tracking-wide text-kickr-cream-dim">
               {fixture.stage} · {fixture.status}
             </p>
           </div>
-          <button onClick={onClose} className="rounded-lg px-2 py-1 text-kickr-ink/60 hover:bg-kickr-line/50" aria-label="close">
+          <button
+            onClick={onClose}
+            className="rounded-lg px-2 py-1 text-kickr-cream-dim hover:bg-kickr-navy-surface hover:text-kickr-cream"
+            aria-label="close"
+          >
             ✕
           </button>
         </div>
 
         {/* tabs */}
-        <div className="flex border-b border-kickr-line px-2">
+        <div className="flex border-b border-kickr-navy-line px-2">
           {(["markets", "live", "history"] as DrawerTab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3 py-2 text-sm font-semibold capitalize ${
-                tab === t ? "border-b-2 border-kickr-ink text-kickr-ink" : "text-kickr-ink/50"
+              className={`px-3 py-2.5 text-sm font-semibold capitalize transition-colors ${
+                tab === t ? "border-b-2 border-kickr-yellow text-kickr-cream" : "text-kickr-cream-dim hover:text-kickr-cream"
               }`}
             >
               {t}
@@ -362,7 +373,7 @@ function FixtureDrawer({
                   />
                 ))
               ) : (
-                <p className="py-8 text-center text-sm text-kickr-ink/50">
+                <p className="py-10 text-center text-sm text-kickr-cream-dim">
                   No open markets. Micro markets spawn on kickoff and after each goal.
                 </p>
               )}
@@ -376,7 +387,7 @@ function FixtureDrawer({
               {history.length ? (
                 history.map((m) => <MarketCard key={m.id} market={m} justSettled={settledIds.has(m.id)} />)
               ) : (
-                <p className="py-8 text-center text-sm text-kickr-ink/50">No settled markets yet.</p>
+                <p className="py-10 text-center text-sm text-kickr-cream-dim">No settled markets yet.</p>
               )}
             </div>
           )}
@@ -403,28 +414,28 @@ function LiveTab({ fixture }: { fixture: FixtureT }) {
   const probs = fixture.win_probs;
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-kickr-line p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-kickr-ink/50">Score</p>
-        <div className="mt-1 flex items-center justify-between font-display text-2xl">
-          <span>{fixture.home}</span>
-          <span className="num">
+      <div className="rounded-2xl border border-kickr-navy-line bg-kickr-navy-surface p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-kickr-cream-dim">Score</p>
+        <div className="mt-2 flex items-center justify-between font-display text-2xl text-kickr-cream">
+          <span className="truncate">{fixture.home}</span>
+          <span className="num shrink-0 px-3 text-kickr-yellow">
             {fixture.status === "upcoming" ? "–" : fixture.score[0]}
             {" : "}
             {fixture.status === "upcoming" ? "–" : fixture.score[1]}
           </span>
-          <span>{fixture.away}</span>
+          <span className="truncate text-right">{fixture.away}</span>
         </div>
         {fixture.status === "live" && (
-          <p className="num mt-2 text-center text-sm text-kickr-ink/60">{fixture.minute}&prime;</p>
+          <p className="num mt-2 text-center text-sm text-kickr-cream-dim">{fixture.minute}&prime;</p>
         )}
       </div>
 
       {probs ? (
-        <div className="rounded-xl border border-kickr-line p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-kickr-ink/50">
+        <div className="rounded-2xl border border-kickr-navy-line bg-kickr-navy-surface p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-kickr-cream-dim">
             Win probability (de-vigged 1X2)
           </p>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-3">
             {[
               { label: fixture.home, key: "home" },
               { label: "Draw", key: "draw" },
@@ -433,12 +444,12 @@ function LiveTab({ fixture }: { fixture: FixtureT }) {
               const p = (probs as any)[row.key] ?? 0;
               return (
                 <div key={row.key}>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm text-kickr-cream/90">
                     <span>{row.label}</span>
                     <span className="num">{Math.round(p * 100)}%</span>
                   </div>
-                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-kickr-line">
-                    <div className="h-full rounded-full bg-kickr-yellow-deep" style={{ width: `${Math.round(p * 100)}%` }} />
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-kickr-navy">
+                    <div className="h-full rounded-full bg-kickr-yellow" style={{ width: `${Math.round(p * 100)}%` }} />
                   </div>
                 </div>
               );
@@ -446,7 +457,7 @@ function LiveTab({ fixture }: { fixture: FixtureT }) {
           </div>
         </div>
       ) : (
-        <p className="py-6 text-center text-sm text-kickr-ink/50">Win probabilities appear once odds are flowing.</p>
+        <p className="py-6 text-center text-sm text-kickr-cream-dim">Win probabilities appear once odds are flowing.</p>
       )}
     </div>
   );

@@ -2,7 +2,7 @@
 
 /** Bet placement sheet with the §8.2 race cases handled explicitly:
  *  quote moved >2% -> inline re-quote; market locked between render and tap
- *  -> friendly "Settled — {evidence}" state, never a raw error. */
+ *  -> friendly "Settled — {evidence}" state, never a raw error. Dark system. */
 
 import React, { useState } from "react";
 import { api, ApiError, fmtOdds } from "@/lib/api";
@@ -58,48 +58,58 @@ export function StakeSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-kickr-ink/40 sm:items-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-md rounded-t-2xl border border-kickr-line bg-white p-5 sm:rounded-2xl"
+        className="w-full max-w-md rounded-t-3xl border border-kickr-navy-line bg-kickr-navy-surface p-5 sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         {settledInfo ? (
           <div>
-            <h3 className="font-display text-lg">Settled</h3>
-            <p className="mt-2 text-sm text-kickr-ink/70">
+            <h3 className="font-display text-lg text-kickr-cream">Settled</h3>
+            <p className="mt-2 text-sm text-kickr-cream-dim">
               This market {settledInfo.status === "locked" ? "locked" : "settled"} while you were deciding
               {settledInfo.winning_outcome && (
                 <>
                   {" "}
-                  — winner <b>{settledInfo.winning_outcome}</b>
+                  — winner <b className="text-kickr-yellow">{settledInfo.winning_outcome}</b>
                 </>
               )}
-              {settledInfo.evidence?.score && (
-                <span className="num"> ({settledInfo.evidence.score.join("-")})</span>
-              )}
-              .
+              {settledInfo.evidence?.score && <span className="num"> ({settledInfo.evidence.score.join("-")})</span>}.
             </p>
-            <button onClick={onClose} className="mt-4 w-full rounded-lg bg-kickr-ink px-4 py-2 text-white">
+            <button
+              onClick={onClose}
+              className="mt-4 w-full rounded-xl bg-kickr-navy px-4 py-2.5 text-sm font-semibold text-kickr-cream"
+            >
               Close
             </button>
           </div>
         ) : (
           <>
-            <p className="text-sm text-kickr-ink/60">{market.question}</p>
+            <p className="text-sm text-kickr-cream-dim">{market.question}</p>
             <div className="mt-1 flex items-baseline justify-between">
-              <h3 className="font-display text-lg">{outcome}</h3>
-              <span className="num text-lg font-bold">
+              <h3 className="font-display text-lg text-kickr-cream">{outcome}</h3>
+              <span className="num text-lg font-bold text-kickr-yellow">
                 @ {fmtOdds(odds)}
-                {requoted && <span className="ml-2 rounded bg-kickr-yellow px-1.5 py-0.5 text-xs font-body">re-quoted</span>}
+                {requoted && (
+                  <span className="ml-2 rounded bg-kickr-yellow px-1.5 py-0.5 font-body text-xs text-kickr-navy">
+                    re-quoted
+                  </span>
+                )}
               </span>
             </div>
+
             <div className="mt-4 flex gap-2">
               {QUICK.map((q) => (
                 <button
                   key={q}
                   onClick={() => setStake(q)}
-                  className={`num flex-1 rounded-lg border px-2 py-2 text-sm ${
-                    stake === q ? "border-kickr-ink bg-kickr-yellow" : "border-kickr-line hover:border-kickr-yellow-deep"
+                  className={`num flex-1 rounded-lg border px-2 py-2.5 text-sm transition-colors ${
+                    stake === q
+                      ? "border-kickr-yellow bg-kickr-yellow/15 text-kickr-cream"
+                      : "border-kickr-navy-line text-kickr-cream/80 hover:border-kickr-yellow/50"
                   }`}
                 >
                   {q}
@@ -111,19 +121,22 @@ export function StakeSheet({
                 max={500}
                 value={stake}
                 onChange={(e) => setStake(Math.max(1, Math.min(500, Number(e.target.value))))}
-                className="num w-20 rounded-lg border border-kickr-line px-2 py-2 text-sm"
+                className="num w-20 rounded-lg border border-kickr-navy-line bg-kickr-navy px-2 py-2.5 text-sm text-kickr-cream outline-none focus:border-kickr-yellow/60"
                 aria-label="custom stake"
               />
             </div>
-            <div className="num mt-3 flex justify-between text-sm text-kickr-ink/70">
+
+            <div className="num mt-4 flex justify-between text-sm text-kickr-cream-dim">
               <span>potential payout</span>
-              <span className="font-semibold text-kickr-ink">{Math.round(stake * odds)}</span>
+              <span className="font-semibold text-kickr-cream">{Math.round(stake * odds)}</span>
             </div>
+
             {error && <p className="mt-2 text-sm text-kickr-loss">{error}</p>}
+
             <button
               onClick={confirm}
               disabled={busy}
-              className="mt-4 w-full rounded-lg bg-kickr-yellow px-4 py-3 font-semibold hover:bg-kickr-yellow-deep disabled:opacity-50"
+              className="mt-4 w-full rounded-xl bg-kickr-yellow px-4 py-3.5 font-bold text-kickr-navy transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
             >
               {busy ? "Placing…" : requoted ? `Accept new quote @ ${fmtOdds(odds)}` : `Confirm ${stake} chips`}
             </button>

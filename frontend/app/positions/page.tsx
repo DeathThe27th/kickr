@@ -1,7 +1,7 @@
 "use client";
 
-/** /positions (build.md §8.2): open bets (live quote vs locked odds) and the
- *  settled bets ledger. Numbers in mono; win/loss ticks green/red on numbers. */
+/** /positions (build.md §8.2), dark system: open bets (live quote vs locked odds)
+ *  and the settled ledger. Numbers mono; win/loss ticks on numbers only. */
 
 import Link from "next/link";
 import React, { useCallback, useEffect, useState } from "react";
@@ -66,44 +66,46 @@ export default function Positions() {
   const settled = bets.filter((b) => b.status !== "open");
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-kickr-navy text-kickr-cream">
       <AppNav me={me} onFaucet={faucet} />
-      <main className="mx-auto max-w-4xl px-4 py-6">
+      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
         <div className="mb-6 flex items-baseline justify-between">
-          <h1 className="font-display text-2xl">Positions</h1>
-          <Link href="/app" className="text-sm text-kickr-ink/60 underline-offset-2 hover:underline">
-            ← back to bracket
+          <h1 className="font-display text-2xl text-kickr-cream">Positions</h1>
+          <Link href="/app" className="text-sm text-kickr-cream-dim underline-offset-4 hover:text-kickr-yellow">
+            ← bracket
           </Link>
         </div>
 
         <section>
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-kickr-ink/50">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-kickr-cream-dim">
             Open ({open.length})
           </h2>
           {open.length ? (
-            <div className="grid gap-2">
+            <div className="grid gap-2.5">
               {open.map((b) => (
-                <div key={b.id} className="rounded-xl border border-kickr-line p-3">
+                <div key={b.id} className="rounded-2xl border border-kickr-navy-line bg-kickr-navy-surface p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold">{b.question}</p>
-                      <p className="text-xs text-kickr-ink/60">
+                      <p className="text-sm font-semibold text-kickr-cream">{b.question}</p>
+                      <p className="mt-0.5 text-xs text-kickr-cream-dim">
                         {b.outcome} · {b.market_status}
                       </p>
                     </div>
                     <div className="text-right text-sm">
-                      <p className="num">
-                        <span className="text-kickr-ink/50">stake</span> {b.stake}
+                      <p className="num text-kickr-cream">
+                        <span className="text-kickr-cream-dim">stake </span>
+                        {b.stake}
                       </p>
-                      <p className="num">
-                        <span className="text-kickr-ink/50">to win</span> {b.potential_payout}
+                      <p className="num text-kickr-cream">
+                        <span className="text-kickr-cream-dim">to win </span>
+                        {b.potential_payout}
                       </p>
                     </div>
                   </div>
-                  <div className="num mt-2 flex items-center gap-4 border-t border-kickr-line pt-2 text-xs text-kickr-ink/70">
+                  <div className="num mt-3 flex items-center gap-4 border-t border-kickr-navy-line pt-2.5 text-xs text-kickr-cream-dim">
                     <span>locked @ {fmtOdds(b.odds_locked)}</span>
                     {b.current_prices?.[b.outcome] != null && (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 text-kickr-cream/80">
                         now <OddsNum value={b.current_prices[b.outcome]} />
                       </span>
                     )}
@@ -112,43 +114,43 @@ export default function Positions() {
               ))}
             </div>
           ) : (
-            <p className="rounded-xl border border-dashed border-kickr-line p-6 text-center text-sm text-kickr-ink/50">
+            <EmptyRow>
               No open positions.{" "}
-              <Link href="/app" className="underline underline-offset-2">
+              <Link href="/app" className="text-kickr-yellow underline-offset-2 hover:underline">
                 Find a market →
               </Link>
-            </p>
+            </EmptyRow>
           )}
         </section>
 
-        <section className="mt-8">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-kickr-ink/50">
+        <section className="mt-10">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-kickr-cream-dim">
             Settled ({settled.length})
           </h2>
           {settled.length ? (
-            <div className="overflow-x-auto rounded-xl border border-kickr-line">
+            <div className="overflow-x-auto rounded-2xl border border-kickr-navy-line">
               <table className="w-full text-sm">
-                <thead className="border-b border-kickr-line text-left text-xs uppercase tracking-wide text-kickr-ink/50">
+                <thead className="border-b border-kickr-navy-line bg-kickr-navy-surface text-left text-xs uppercase tracking-wide text-kickr-cream-dim">
                   <tr>
-                    <th className="px-3 py-2 font-semibold">Market</th>
-                    <th className="px-3 py-2 font-semibold">Pick</th>
-                    <th className="num px-3 py-2 text-right font-semibold">Stake</th>
-                    <th className="num px-3 py-2 text-right font-semibold">Odds</th>
-                    <th className="num px-3 py-2 text-right font-semibold">Result</th>
+                    <th className="px-4 py-2.5 font-semibold">Market</th>
+                    <th className="px-4 py-2.5 font-semibold">Pick</th>
+                    <th className="num px-4 py-2.5 text-right font-semibold">Stake</th>
+                    <th className="num px-4 py-2.5 text-right font-semibold">Odds</th>
+                    <th className="num px-4 py-2.5 text-right font-semibold">Result</th>
                   </tr>
                 </thead>
                 <tbody>
                   {settled.map((b) => {
                     const pnl = b.status === "won" ? b.potential_payout - b.stake : b.status === "voided" ? 0 : -b.stake;
                     return (
-                      <tr key={b.id} className="border-b border-kickr-line/60 last:border-0">
-                        <td className="max-w-[16rem] truncate px-3 py-2">{b.question}</td>
-                        <td className="px-3 py-2 text-kickr-ink/70">{b.outcome}</td>
-                        <td className="num px-3 py-2 text-right">{b.stake}</td>
-                        <td className="num px-3 py-2 text-right">{fmtOdds(b.odds_locked)}</td>
+                      <tr key={b.id} className="border-b border-kickr-navy-line/60 last:border-0">
+                        <td className="max-w-[16rem] truncate px-4 py-2.5 text-kickr-cream/90">{b.question}</td>
+                        <td className="px-4 py-2.5 text-kickr-cream-dim">{b.outcome}</td>
+                        <td className="num px-4 py-2.5 text-right text-kickr-cream">{b.stake}</td>
+                        <td className="num px-4 py-2.5 text-right text-kickr-cream">{fmtOdds(b.odds_locked)}</td>
                         <td
-                          className={`num px-3 py-2 text-right font-semibold ${
-                            b.status === "won" ? "text-kickr-win" : b.status === "lost" ? "text-kickr-loss" : "text-kickr-ink/50"
+                          className={`num px-4 py-2.5 text-right font-semibold ${
+                            b.status === "won" ? "text-kickr-win" : b.status === "lost" ? "text-kickr-loss" : "text-kickr-cream-dim"
                           }`}
                         >
                           {b.status === "voided" ? "void" : `${pnl > 0 ? "+" : ""}${pnl}`}
@@ -160,12 +162,18 @@ export default function Positions() {
               </table>
             </div>
           ) : (
-            <p className="rounded-xl border border-dashed border-kickr-line p-6 text-center text-sm text-kickr-ink/50">
-              No settled bets yet.
-            </p>
+            <EmptyRow>No settled bets yet.</EmptyRow>
           )}
         </section>
       </main>
     </div>
+  );
+}
+
+function EmptyRow({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-2xl border border-dashed border-kickr-navy-line p-8 text-center text-sm text-kickr-cream-dim">
+      {children}
+    </p>
   );
 }
