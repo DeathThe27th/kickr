@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Kickr design system (build.md §8.1)
+   White pages, ink text — yellow reserved for LIVE surfaces, primary
+   buttons, the live ticker strip and in-play bracket nodes. */
+
+:root {
+  --kickr-yellow: #ffde00;
+  --kickr-yellow-deep: #eab700;
+  --pitch-ink: #101314;
+  --line-grey: #e7e5dc;
+  --live-red: #e5484d;
+}
+
+body {
+  @apply bg-white text-kickr-ink font-body antialiased;
+}
+
+/* Numbers never use the display face — odds, clocks, balances in mono. */
+.num {
+  @apply font-mono tabular-nums;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Live pulse dot: 2s pulse on live surfaces only. */
+.pulse-dot {
+  @apply inline-block h-2 w-2 rounded-full bg-kickr-live;
+  animation: kickr-pulse 2s ease-in-out infinite;
+}
+
+/* Odds flick: green/red for 400ms on change. */
+.flick-up {
+  animation: kickr-flick-up 0.4s ease-out;
+}
+.flick-down {
+  animation: kickr-flick-down 0.4s ease-out;
+}
+
+/* Market settle: one yellow sweep across the card. */
+.settle-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.settle-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, var(--kickr-yellow) 50%, transparent 80%);
+  opacity: 0.85;
+  transform: translateX(-110%);
+  animation: kickr-sweep 0.9s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes kickr-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+@keyframes kickr-flick-up {
+  0% { color: #1f9d55; }
+  100% { color: inherit; }
+}
+@keyframes kickr-flick-down {
+  0% { color: #e5484d; }
+  100% { color: inherit; }
+}
+@keyframes kickr-sweep {
+  to { transform: translateX(110%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot, .flick-up, .flick-down { animation: none; }
+  .settle-sweep::after { display: none; }
+}
+
+::selection {
+  background: var(--kickr-yellow);
+  color: var(--pitch-ink);
+}

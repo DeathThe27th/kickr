@@ -1,0 +1,26 @@
+[
+  {
+    "FixtureId": 17588230,
+    "MessageId": "1833685182:00003:000224-1-10021-stab",
+    "Ts": 1781554649382,
+    "Bookmaker": "TXLineStablePriceDemargined",
+    "BookmakerId": 10021,
+    "SuperOddsType": "ASIANHANDICAP_PARTICIPANT_GOALS",
+    "GameState": null,
+    "InRunning": true,
+    "MarketParameters": "line=-1.5",
+    "MarketPeriod": null,
+    "PriceNames": [
+      "part1",
+      "part2"
+    ],
+    "Prices": [
+      4852,
+      1260
+    ],
+    "Pct": [
+      "20.610",
+      "79.365"
+    ]
+  }
+]

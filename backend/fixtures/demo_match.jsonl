@@ -1,0 +1,101 @@
+{"minute": -1, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.303, "draw": 3.915, "away": 3.223}}
+{"minute": -1, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 1.975, "under": 2.026}}
+{"minute": -1, "type": "odds", "market": "AH", "line": -0.5, "prices": {"home": 2.303, "away": 1.768}}
+{"minute": 0, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 1.975, "under": 2.026}}
+{"minute": 0, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.303, "draw": 3.915, "away": 3.223}}
+{"minute": 2, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 2.034, "under": 1.967}}
+{"minute": 2, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.316, "draw": 3.863, "away": 3.233}}
+{"minute": 4, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 2.098, "under": 1.91}}
+{"minute": 4, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.33, "draw": 3.81, "away": 3.244}}
+{"minute": 6, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 2.168, "under": 1.856}}
+{"minute": 6, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.344, "draw": 3.757, "away": 3.255}}
+{"minute": 8, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 2.243, "under": 1.805}}
+{"minute": 8, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.359, "draw": 3.703, "away": 3.267}}
+{"minute": 10, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 2.324, "under": 1.755}}
+{"minute": 10, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.375, "draw": 3.648, "away": 3.28}}
+{"minute": 12, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 2.412, "under": 1.708}}
+{"minute": 12, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.392, "draw": 3.593, "away": 3.294}}
+{"minute": 14, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 2.508, "under": 1.663}}
+{"minute": 14, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.41, "draw": 3.536, "away": 3.309}}
+{"minute": 16, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 2.613, "under": 1.62}}
+{"minute": 16, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.428, "draw": 3.479, "away": 3.325}}
+{"minute": 18, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 2.728, "under": 1.579}}
+{"minute": 18, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.448, "draw": 3.422, "away": 3.342}}
+{"minute": 20, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 2.854, "under": 1.539}}
+{"minute": 20, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.468, "draw": 3.363, "away": 3.361}}
+{"minute": 22, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 2.993, "under": 1.502}}
+{"minute": 22, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.49, "draw": 3.304, "away": 3.381}}
+{"minute": 24, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 1.699, "under": 2.43}}
+{"minute": 24, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.514, "draw": 3.244, "away": 3.402}}
+{"minute": 26, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 1.749, "under": 2.336}}
+{"minute": 26, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.538, "draw": 3.183, "away": 3.426}}
+{"minute": 28, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 1.803, "under": 2.246}}
+{"minute": 28, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.565, "draw": 3.121, "away": 3.451}}
+{"minute": 30, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 1.862, "under": 2.161}}
+{"minute": 30, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.593, "draw": 3.059, "away": 3.479}}
+{"minute": 32, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 1.927, "under": 2.079}}
+{"minute": 32, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.623, "draw": 2.996, "away": 3.509}}
+{"minute": 34, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 1.998, "under": 2.002}}
+{"minute": 34, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.656, "draw": 2.931, "away": 3.542}}
+{"minute": 36, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.077, "under": 1.929}}
+{"minute": 36, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.691, "draw": 2.866, "away": 3.578}}
+{"minute": 38, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.164, "under": 1.859}}
+{"minute": 38, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.729, "draw": 2.8, "away": 3.617}}
+{"minute": 40, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.262, "under": 1.793}}
+{"minute": 40, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.77, "draw": 2.734, "away": 3.661}}
+{"minute": 42, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.37, "under": 1.73}}
+{"minute": 42, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.815, "draw": 2.666, "away": 3.708}}
+{"minute": 44, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.492, "under": 1.67}}
+{"minute": 44, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.863, "draw": 2.598, "away": 3.761}}
+{"minute": 46, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.63, "under": 1.614}}
+{"minute": 46, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.917, "draw": 2.529, "away": 3.82}}
+{"minute": 48, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.786, "under": 1.56}}
+{"minute": 48, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 2.976, "draw": 2.46, "away": 3.885}}
+{"minute": 50, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.964, "under": 1.509}}
+{"minute": 50, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 3.041, "draw": 2.39, "away": 3.957}}
+{"minute": 52, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 3.169, "under": 1.461}}
+{"minute": 52, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 3.114, "draw": 2.319, "away": 4.039}}
+{"minute": 54, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 3.406, "under": 1.416}}
+{"minute": 54, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 3.195, "draw": 2.248, "away": 4.131}}
+{"minute": 56, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 3.682, "under": 1.373}}
+{"minute": 56, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 3.286, "draw": 2.176, "away": 4.236}}
+{"minute": 58, "type": "odds", "market": "OU", "line": 0.5, "prices": {"over": 1.62, "under": 2.612}}
+{"minute": 58, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 3.389, "draw": 2.104, "away": 4.355}}
+{"minute": 60, "type": "odds", "market": "OU", "line": 0.5, "prices": {"over": 1.685, "under": 2.46}}
+{"minute": 60, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 3.507, "draw": 2.031, "away": 4.492}}
+{"minute": 62, "type": "odds", "market": "OU", "line": 0.5, "prices": {"over": 1.76, "under": 2.316}}
+{"minute": 62, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 3.642, "draw": 1.959, "away": 4.651}}
+{"minute": 64, "type": "odds", "market": "OU", "line": 0.5, "prices": {"over": 1.846, "under": 2.181}}
+{"minute": 64, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 3.8, "draw": 1.887, "away": 4.837}}
+{"minute": 66, "type": "odds", "market": "OU", "line": 0.5, "prices": {"over": 1.948, "under": 2.054}}
+{"minute": 66, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 3.985, "draw": 1.814, "away": 5.056}}
+{"minute": 68, "type": "goal", "team": "home"}
+{"minute": 68, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.07, "under": 1.935}}
+{"minute": 68, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 1.232, "draw": 6.176, "away": 38.276}}
+{"minute": 69, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.139, "under": 1.878}}
+{"minute": 69, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 1.224, "draw": 6.308, "away": 41.085}}
+{"minute": 70, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.216, "under": 1.822}}
+{"minute": 70, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 1.216, "draw": 6.457, "away": 44.294}}
+{"minute": 72, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.397, "under": 1.716}}
+{"minute": 72, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 1.199, "draw": 6.813, "away": 50.0}}
+{"minute": 74, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.623, "under": 1.616}}
+{"minute": 74, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 1.181, "draw": 7.272, "away": 50.0}}
+{"minute": 76, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 2.916, "under": 1.522}}
+{"minute": 76, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 1.162, "draw": 7.879, "away": 50.0}}
+{"minute": 78, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 3.308, "under": 1.433}}
+{"minute": 78, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 1.142, "draw": 8.707, "away": 50.0}}
+{"minute": 80, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 3.858, "under": 1.35}}
+{"minute": 80, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 1.121, "draw": 9.888, "away": 50.0}}
+{"minute": 82, "type": "odds", "market": "OU", "line": 1.5, "prices": {"over": 4.687, "under": 1.271}}
+{"minute": 82, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 1.099, "draw": 11.687, "away": 50.0}}
+{"minute": 84, "type": "goal", "team": "away"}
+{"minute": 84, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 6.071, "under": 1.197}}
+{"minute": 84, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 11.459, "draw": 1.188, "away": 14.134}}
+{"minute": 85, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 7.179, "under": 1.162}}
+{"minute": 85, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 13.473, "draw": 1.155, "away": 16.592}}
+{"minute": 86, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 8.843, "under": 1.127}}
+{"minute": 86, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 16.497, "draw": 1.123, "away": 20.285}}
+{"minute": 88, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 17.172, "under": 1.062}}
+{"minute": 88, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 31.635, "draw": 1.061, "away": 38.782}}
+{"minute": 90, "type": "odds", "market": "OU", "line": 2.5, "prices": {"over": 50.0, "under": 1.01}}
+{"minute": 90, "type": "odds", "market": "1X2", "line": null, "prices": {"home": 50.0, "draw": 1.01, "away": 50.0}}

@@ -1,0 +1,30 @@
+[
+  {
+    "Ts": 1783832400000,
+    "StartTime": 1784055600000,
+    "Competition": "World Cup",
+    "CompetitionId": 72,
+    "FixtureGroupId": 10115573,
+    "Participant1Id": 1999,
+    "Participant1": "France",
+    "Participant2Id": 3021,
+    "Participant2": "Spain",
+    "FixtureId": 18237038,
+    "Participant1IsHome": true,
+    "GameState": 1
+  },
+  {
+    "Ts": 1783825200000,
+    "StartTime": 1784142000000,
+    "Competition": "World Cup",
+    "CompetitionId": 72,
+    "FixtureGroupId": 10115573,
+    "Participant1Id": 1888,
+    "Participant1": "England",
+    "Participant2Id": 1489,
+    "Participant2": "Argentina",
+    "FixtureId": 18241006,
+    "Participant1IsHome": true,
+    "GameState": 1
+  }
+]

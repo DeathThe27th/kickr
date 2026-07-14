@@ -1,0 +1,30 @@
+# --- secrets (never commit) ---
+.env
+.env.local
+.env.*.local
+chain/.keys/
+chain/.txline-credentials.json
+*.pem
+*-keypair.json
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.db
+*.db-shm
+*.db-wal
+
+# --- node / next ---
+node_modules/
+.next/
+out/
+npm-debug.log*
+.vercel/
+
+# --- os / editor ---
+.DS_Store
+*.log
+Screenshot*.png

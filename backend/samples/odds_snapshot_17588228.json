@@ -1,0 +1,26 @@
+[
+  {
+    "FixtureId": 17588228,
+    "MessageId": "1833965761:00003:001140-1-10021-stab",
+    "Ts": 1781730642351,
+    "Bookmaker": "TXLineStablePriceDemargined",
+    "BookmakerId": 10021,
+    "SuperOddsType": "OVERUNDER_PARTICIPANT_GOALS",
+    "GameState": null,
+    "InRunning": true,
+    "MarketParameters": "line=5",
+    "MarketPeriod": null,
+    "PriceNames": [
+      "over",
+      "under"
+    ],
+    "Prices": [
+      1495,
+      3020
+    ],
+    "Pct": [
+      "66.890",
+      "33.113"
+    ]
+  }
+]
