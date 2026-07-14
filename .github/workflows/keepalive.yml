@@ -1,0 +1,26 @@
+name: keep-render-awake
+
+# Render Free web services sleep after 15 min with no inbound HTTP. The Brain
+# runs a background loop with no inbound traffic of its own, so without this it
+# would sleep and freeze the match replay. This pings /healthz every ~10 min to
+# keep the single free instance awake (well under the 750 free hours/month).
+# GitHub Actions is free + unlimited on public repos.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://kickr-backend.onrender.com/healthz || echo 000)
+            echo "attempt $i -> HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "backend not healthy yet (it may be cold-starting); not failing the job"
