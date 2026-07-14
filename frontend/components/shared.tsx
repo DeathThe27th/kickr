@@ -30,8 +30,13 @@ export function LivePill({ minute }: { minute: number }) {
   );
 }
 
-export function Wordmark({ className = "" }: { className?: string }) {
-  return <span className={`font-display lowercase tracking-tight ${className}`}>kickr</span>;
+export function Wordmark({ className = "", dot = true }: { className?: string; dot?: boolean }) {
+  // Hand-lettered "kickr." mark. The period is part of the logo.
+  return (
+    <span className={`wordmark leading-none ${className}`}>
+      kickr{dot && <span className="text-kickr-yellow">.</span>}
+    </span>
+  );
 }
 
 export function ChipIcon() {

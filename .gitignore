@@ -28,3 +28,7 @@ npm-debug.log*
 .DS_Store
 *.log
 Screenshot*.png
+
+# root working assets (source lives in frontend/public)
+/hero.jpg
+/kickr logo mock.png
