@@ -1,0 +1,40 @@
+# Render Blueprint for the Kickr backend (the Brain).
+# In Render: New -> Blueprint -> pick this repo. It provisions the Docker web
+# service below. Fill the env vars marked `sync: false` in the dashboard.
+#
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: kickr-backend
+    runtime: docker
+    plan: starter            # 512 MB; free tier also works but cold-starts
+    dockerfilePath: ./Dockerfile
+    dockerContext: .         # repo root, so chain/ is in the image
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # --- required ---
+      - key: DATABASE_URL      # Supabase "Session pooler" URI (postgresql://...)
+        sync: false
+      - key: ADMIN_KEY         # strong secret; guards /api/admin/demo/restart
+        generateValue: true
+      # --- demo vs live ---
+      - key: DEMO_MODE
+        value: "true"          # true = replay demo match, no external creds
+      - key: MARGIN
+        value: "0.05"
+      # --- Solana receipts (optional; omit SOLANA_KEYPAIR -> receipts store null) ---
+      - key: SOLANA_RPC
+        value: https://api.devnet.solana.com
+      - key: SOLANA_KEYPAIR    # base58 secret of a funded devnet wallet
+        sync: false
+      # --- live TxLINE (only used when DEMO_MODE=false) ---
+      - key: TXLINE_API_ORIGIN
+        value: https://txline-dev.txodds.com
+      - key: TXLINE_JWT
+        sync: false
+      - key: TXLINE_API_TOKEN
+        sync: false
+      # --- real auth (optional; omit to keep the demo dev sign-in) ---
+      - key: PRIVY_APP_ID
+        sync: false
