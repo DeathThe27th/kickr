@@ -90,14 +90,8 @@ export default function Landing() {
         <div className="hero-scrim absolute inset-0" />
 
         {/* nav */}
-        <nav className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
+        <nav className="relative z-20 mx-auto flex max-w-7xl items-center px-6 py-6">
           <Wordmark className="text-3xl text-kickr-cream" />
-          <button
-            onClick={login}
-            className="rounded-full bg-kickr-yellow px-5 py-2 text-sm font-semibold text-kickr-navy transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0"
-          >
-            Get started
-          </button>
         </nav>
 
         {/* hero content — sits in the dark left third */}
@@ -115,9 +109,9 @@ export default function Landing() {
             <div className="mt-9 flex flex-wrap items-center gap-4">
               <button
                 onClick={login}
-                className="rounded-xl bg-kickr-yellow px-7 py-4 text-lg font-bold text-kickr-navy shadow-live-glow transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0"
+                className="rounded-full bg-kickr-yellow px-7 py-4 text-lg font-bold text-kickr-navy shadow-live-glow transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0"
               >
-                Get started
+                Sign in
               </button>
               <a
                 href="#live"
