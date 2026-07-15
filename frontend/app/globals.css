@@ -14,6 +14,18 @@
   --live-red: #e5484d;
 }
 
+/* Default zoom. The site is designed at the 75% browser-zoom look (three
+   zoom-outs in Chrome). Type and layout are rem-driven, so shrinking the root
+   scales both together exactly the way zoom does — max-w-7xl narrows with the
+   text instead of stranding it. Phones opt out: nobody zooms out a phone, and
+   75% would drop the small labels below a readable size.
+   One knob — change the percentage to retune the whole site. */
+@media (min-width: 640px) {
+  html {
+    font-size: 75%;
+  }
+}
+
 body {
   @apply bg-kickr-navy text-kickr-cream font-body antialiased;
 }

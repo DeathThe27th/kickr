@@ -20,11 +20,15 @@ export function MarketCard({
   onPick,
   justSettled,
   readOnly,
+  variant = "card",
 }: {
   market: MarketT;
   onPick?: (outcome: string) => void;
   justSettled?: boolean;
   readOnly?: boolean;
+  /** "flat" drops the card chrome for surfaces that already supply it (the app
+   *  hero band), so outcome buttons never sit inside a card inside a card. */
+  variant?: "card" | "flat";
 }) {
   const settled = market.status === "settled" || market.status === "voided";
   const receipt = market.receipt_settle_sig ?? market.receipt_open_sig;
@@ -32,9 +36,9 @@ export function MarketCard({
 
   return (
     <div
-      className={`rounded-xl border border-kickr-navy-line bg-kickr-navy-surface p-3.5 ${
-        justSettled ? "settle-sweep" : ""
-      } ${suspended ? "opacity-60" : ""}`}
+      className={`bg-kickr-navy-surface ${
+        variant === "flat" ? "p-4" : "rounded-xl border border-kickr-navy-line p-3.5"
+      } ${justSettled ? "settle-sweep" : ""} ${suspended ? "opacity-60" : ""}`}
     >
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm font-semibold text-kickr-cream">{market.question}</p>
