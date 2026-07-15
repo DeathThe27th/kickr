@@ -13,7 +13,8 @@ import { AppNav } from "@/components/Nav";
 import { Bracket, FixtureT } from "@/components/Bracket";
 import { MarketCard, MarketT } from "@/components/MarketCard";
 import { StakeSheet } from "@/components/StakeSheet";
-import { LivePill, Toast } from "@/components/shared";
+import { LivePill, TeamFlag, Toast } from "@/components/shared";
+import { flagUrl } from "@/lib/flags";
 
 export default function AppHome() {
   const { authed, ready, getToken } = useAuth();
@@ -124,6 +125,23 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** The two nations' colours bleeding in behind the score — the fixture's own
+ *  imagery rather than stock atmosphere. Sits under the live wash, and drops
+ *  out entirely for unresolved slots ("Winner SF1"). */
+function FlagWash({ home, away }: { home: string; away: string }) {
+  const h = flagUrl(home, 320);
+  const a = flagUrl(away, 320);
+  if (!h && !a) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 opacity-[0.13]" aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {h && <img src={h} alt="" className="absolute inset-y-0 left-0 h-full w-3/5 object-cover blur-3xl" />}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {a && <img src={a} alt="" className="absolute inset-y-0 right-0 h-full w-3/5 object-cover blur-3xl" />}
+    </div>
+  );
+}
+
 // ------------------------------------------------------------------ hero band
 /** The fixture in play is the page's subject, so it gets a band rather than a
  *  card in the stack: score as the headline, the hottest markets flush beneath
@@ -178,6 +196,7 @@ function LiveFixtureBand({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => 
 
   return (
     <section className="relative overflow-hidden bg-kickr-navy-surface">
+      <FlagWash home={f.home} away={f.away} />
       {/* Live wash — yellow only ever means "in play". */}
       <div className="pointer-events-none absolute -top-40 right-0 h-72 w-2/3 bg-kickr-yellow/10 blur-3xl" />
 
@@ -185,10 +204,16 @@ function LiveFixtureBand({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => 
         <div>
           <LivePill minute={f.minute} />
           <button onClick={() => onOpen(f)} className="mt-3.5 block text-left">
-            <span className="flex flex-wrap items-baseline gap-x-4 font-display text-3xl leading-none text-kickr-cream sm:text-4xl">
-              {f.home}
+            <span className="flex flex-wrap items-center gap-x-4 gap-y-2 font-display text-3xl leading-none text-kickr-cream sm:text-4xl">
+              <span className="inline-flex items-center gap-2.5">
+                <TeamFlag team={f.home} />
+                {f.home}
+              </span>
               <span className="num text-4xl font-bold text-kickr-yellow sm:text-5xl">{f.score.join("–")}</span>
-              {f.away}
+              <span className="inline-flex items-center gap-2.5">
+                {f.away}
+                <TeamFlag team={f.away} />
+              </span>
             </span>
           </button>
         </div>
@@ -228,8 +253,9 @@ function NextKickoffBand({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => 
   }, []);
   const secs = Math.max(0, Math.floor((new Date(f.kickoff_at).getTime() - now) / 1000));
   return (
-    <section className="border-b border-kickr-navy-line bg-kickr-navy-surface">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+    <section className="relative overflow-hidden border-b border-kickr-navy-line bg-kickr-navy-surface">
+      <FlagWash home={f.home} away={f.away} />
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
         <button
           onClick={() => onOpen(f)}
           className="group flex w-full flex-wrap items-end justify-between gap-x-8 gap-y-6 py-9 text-left"
@@ -238,8 +264,16 @@ function NextKickoffBand({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => 
             <span className="text-xs font-semibold uppercase tracking-[0.15em] text-kickr-cream-dim">
               Next kickoff
             </span>
-            <span className="mt-3.5 flex flex-wrap items-baseline gap-x-3 font-display text-3xl leading-none text-kickr-cream sm:text-4xl">
-              {f.home} <span className="text-kickr-cream-dim">v</span> {f.away}
+            <span className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2 font-display text-3xl leading-none text-kickr-cream sm:text-4xl">
+              <span className="inline-flex items-center gap-2.5">
+                <TeamFlag team={f.home} />
+                {f.home}
+              </span>
+              <span className="text-kickr-cream-dim">v</span>
+              <span className="inline-flex items-center gap-2.5">
+                {f.away}
+                <TeamFlag team={f.away} />
+              </span>
             </span>
           </div>
           <div className="text-right">
@@ -302,7 +336,11 @@ function FixtureDrawer({
     return () => unsub();
   }, [fixture.id, load]);
 
-  const live = markets.filter((m) => ["open", "suspended", "locked"].includes(m.status));
+  // Bettable first: a locked market you can't act on shouldn't outrank an open one.
+  const LIVE_ORDER: Record<string, number> = { open: 0, suspended: 1, locked: 2 };
+  const live = markets
+    .filter((m) => m.status in LIVE_ORDER)
+    .sort((a, b) => LIVE_ORDER[a.status] - LIVE_ORDER[b.status]);
   const history = markets.filter((m) => ["settled", "voided"].includes(m.status));
 
   return (

@@ -98,7 +98,7 @@ export default function Landing() {
         <div className="relative z-10 mx-auto flex min-h-[calc(100svh-88px)] max-w-7xl flex-col justify-end px-6 pb-16 sm:justify-center sm:pb-0">
           <div className="max-w-2xl reveal">
             <h1 className="font-display text-5xl leading-[0.95] text-kickr-cream sm:text-6xl lg:text-7xl" style={{ textWrap: "balance" as any }}>
-              Markets that <span className="text-kickr-yellow">live and die</span> inside the match.
+              Markets that <span className="text-kickr-yellow">live</span> inside the match.
             </h1>
 
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-kickr-cream/85">

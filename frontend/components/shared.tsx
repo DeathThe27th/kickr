@@ -2,6 +2,28 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { fmtOdds } from "@/lib/api";
+import { flagUrl } from "@/lib/flags";
+
+/** A nation's flag. Renders nothing for unresolved slots ("Winner SF1") rather
+ *  than a broken box. Fixed dimensions — flags load late and must not shift the
+ *  score line under them. */
+export function TeamFlag({ team, className = "" }: { team: string; className?: string }) {
+  const src = flagUrl(team, 80);
+  if (!src) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      srcSet={`${src} 1x, ${flagUrl(team, 160)} 2x`}
+      alt=""
+      aria-hidden
+      loading="lazy"
+      width={36}
+      height={24}
+      className={`h-6 w-9 shrink-0 rounded-[3px] object-cover ring-1 ring-kickr-cream/20 ${className}`}
+    />
+  );
+}
 
 /** Odds figure that flicks green/red for 400ms on change (§8.1 motion). */
 export function OddsNum({ value }: { value: number | undefined }) {

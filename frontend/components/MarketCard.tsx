@@ -33,40 +33,54 @@ export function MarketCard({
   const settled = market.status === "settled" || market.status === "voided";
   const receipt = market.receipt_settle_sig ?? market.receipt_open_sig;
   const suspended = market.status === "suspended";
+  const open = market.status === "open";
 
   return (
     <div
       className={`bg-kickr-navy-surface ${
         variant === "flat" ? "p-4" : "rounded-xl border border-kickr-navy-line p-3.5"
-      } ${justSettled ? "settle-sweep" : ""} ${suspended ? "opacity-60" : ""}`}
+      } ${justSettled ? "settle-sweep" : ""}`}
     >
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm font-semibold text-kickr-cream">{market.question}</p>
-        <span
-          className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide ${
-            suspended ? "text-kickr-loss" : "text-kickr-cream-dim"
-          }`}
-        >
-          {market.status === "open" ? market.template_id : market.status}
-        </span>
+        {/* Only real state reaches the user — template_id is an internal code
+            (PM1..PM4, M1..M8). Settled markets say so in the body already. */}
+        {!open && !settled && (
+          <span
+            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+              suspended ? "bg-kickr-loss/15 text-kickr-loss" : "bg-kickr-navy text-kickr-cream-dim"
+            }`}
+          >
+            {suspended ? "Suspended" : "Locked"}
+          </span>
+        )}
       </div>
 
       {!settled ? (
-        <div className="mt-2.5 grid grid-flow-col gap-2">
-          {market.outcomes.map((o) => (
-            <button
-              key={o}
-              disabled={readOnly || market.status !== "open"}
-              onClick={() => onPick?.(o)}
-              className="flex items-center justify-between gap-2 rounded-lg border border-kickr-navy-line bg-kickr-navy px-3 py-2.5 text-sm text-kickr-cream/90 transition-all enabled:hover:-translate-y-px enabled:hover:border-kickr-yellow/60 enabled:hover:text-kickr-cream disabled:cursor-default disabled:opacity-80"
-            >
-              <span>{o}</span>
-              <span className="text-kickr-yellow">
-                <OddsNum value={market.prices?.[o]} />
-              </span>
-            </button>
-          ))}
-        </div>
+        <>
+          {/* One row only when it fits: 1X2 and other 3-way markets stack, or the
+              label and the price collide in the 30rem drawer. */}
+          <div className={`mt-2.5 grid gap-2 ${market.outcomes.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
+            {market.outcomes.map((o) => (
+              <button
+                key={o}
+                disabled={readOnly || !open}
+                onClick={() => onPick?.(o)}
+                className="flex items-center justify-between gap-2 rounded-lg border border-kickr-navy-line bg-kickr-navy px-3 py-2.5 text-sm text-kickr-cream/90 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kickr-yellow focus-visible:ring-offset-2 focus-visible:ring-offset-kickr-navy-surface enabled:hover:-translate-y-px enabled:hover:border-kickr-yellow/60 enabled:hover:text-kickr-cream disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="truncate">{o}</span>
+                <span className="shrink-0 text-kickr-yellow">
+                  <OddsNum value={market.prices?.[o]} />
+                </span>
+              </button>
+            ))}
+          </div>
+          {suspended && (
+            <p className="mt-2 text-xs text-kickr-cream-dim">
+              Prices went stale — betting reopens when the feed catches up.
+            </p>
+          )}
+        </>
       ) : (
         <div className="mt-2 text-sm">
           {market.status === "voided" ? (
