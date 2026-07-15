@@ -6,7 +6,7 @@ import json
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -28,6 +28,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname
 log = logging.getLogger("kickr.main")
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+# Generous upper bound on a real match: 90' + stoppage + extra time + penalties
+# runs to roughly 3h. Past this, a fixture still marked 'live' is stale data.
+STALE_LIVE_AFTER = timedelta(hours=4)
 
 
 def _seed_fixtures(source) -> None:
@@ -55,13 +59,25 @@ def _seed_fixtures(source) -> None:
                 session.add(row)
             else:
                 row.home, row.away, row.kickoff_at = nf.home, nf.away, nf.kickoff_at
-            if row.status == "upcoming" and row.kickoff_at.replace(tzinfo=timezone.utc) < now:
-                # past fixtures without live coverage render as finished — but a
-                # simulated match is driven by its own clock, not the calendar,
-                # so finishing it here would kill it the moment it kicked off.
-                is_scripted_demo = settings.demo_mode and nf.txline_fixture_id == _demo_id()
-                if not is_scripted_demo and not is_demo_id(nf.txline_fixture_id):
-                    row.status = "finished"
+            # A simulated match runs on its own clock, not the calendar, so none
+            # of the wall-clock rules below may touch it.
+            is_scripted_demo = settings.demo_mode and nf.txline_fixture_id == _demo_id()
+            if is_scripted_demo or is_demo_id(nf.txline_fixture_id):
+                continue
+
+            kickoff = row.kickoff_at.replace(tzinfo=timezone.utc)
+            if row.status == "upcoming" and kickoff < now:
+                # past fixtures without live coverage render as finished
+                row.status = "finished"
+            elif row.status == "live" and kickoff < now - STALE_LIVE_AFTER:
+                # Nothing else can rescue a stranded 'live' row: the rule above
+                # only catches fixtures that never started, and a fixture stays
+                # tracked while live, so if the feed goes quiet about it —
+                # outage, or a match that ended before we were watching — it
+                # sits at 0-0 in-play forever. Hours past kickoff it is stale,
+                # not in-play.
+                log.warning("fixture %s stale in 'live' since %s — finishing", nf.txline_fixture_id, kickoff)
+                row.status = "finished"
 
 
 def _demo_id() -> int:
