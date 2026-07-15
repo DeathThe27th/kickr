@@ -182,14 +182,6 @@ export default function Landing() {
           </div>
         )}
 
-        <div className="reveal mt-8">
-          <button
-            onClick={login}
-            className="rounded-xl bg-kickr-yellow px-6 py-3.5 font-bold text-kickr-navy transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0"
-          >
-            Get started →
-          </button>
-        </div>
       </section>
 
       {/* -------------------------------------------------------- how it works */}
@@ -211,11 +203,9 @@ export default function Landing() {
 
       {/* ---------------------------------------------------------------- footer */}
       <footer className="border-t border-kickr-navy-line">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-8">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-6 py-8">
           <Wordmark className="text-2xl text-kickr-cream" />
-          <button onClick={login} className="text-sm font-semibold text-kickr-cream-dim hover:text-kickr-yellow">
-            Get started →
-          </button>
+          <span className="text-sm text-kickr-cream-dim">Priced live · settled in seconds · receipts on-chain</span>
         </div>
       </footer>
     </main>
