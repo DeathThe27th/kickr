@@ -1,6 +1,7 @@
 """HTTP API (build.md §7)."""
 from __future__ import annotations
 
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -13,8 +14,9 @@ from ..auth import current_user
 from ..config import settings
 from ..db import get_session
 from ..ledger import LedgerError, balance, bust_reset, claim_faucet, place_bet
-from ..models import Bet, Fixture, Market, Settlement, Transaction, User
+from ..models import Bet, Fixture, Market, Settlement, TelegramLinkCode, Transaction, User
 from ..receipts import explorer_url
+from ..telegram.bot import LINK_CODE_TTL
 from ..txline.simulator import is_demo_id
 from ..txline.source import REGISTRY
 from .stream import broker
@@ -208,6 +210,7 @@ def me(user: User = Depends(current_user), session: Session = Depends(get_sessio
         "handle": user.handle,
         "balance": balance(session, user.id),
         "faucet_claimable": not faucet_claimed,
+        "telegram_linked": bool(user.telegram_chat_id),
         "bets": [
             {
                 "id": b.id,
@@ -278,6 +281,35 @@ def create_bet(
         },
         "balance": balance(session, user.id),
     }
+
+
+@router.post("/me/telegram/link-code")
+def telegram_link_code(user: User = Depends(current_user), session: Session = Depends(get_session)):
+    """Mint a one-time deep link that binds this account to a Telegram chat.
+
+    The code — not the Privy token — is what travels, so the bot can only bind
+    an account that was deliberately handed to it. Single-use, 10 minutes.
+    """
+    if not settings.telegram_bot_token:
+        raise HTTPException(400, "telegram not configured")
+    username = runtime.get("telegram_username")
+    if not username:
+        raise HTTPException(503, "telegram bot still starting")
+
+    code = secrets.token_urlsafe(8)[:16]
+    session.add(TelegramLinkCode(code=code, user_id=user.id))
+    session.flush()
+    return {
+        "url": f"https://t.me/{username}?start={code}",
+        "expires_in": int(LINK_CODE_TTL.total_seconds()),
+        "linked": bool(user.telegram_chat_id),
+    }
+
+
+@router.post("/me/telegram/unlink")
+def telegram_unlink(user: User = Depends(current_user), session: Session = Depends(get_session)):
+    user.telegram_chat_id = None
+    return {"ok": True}
 
 
 @router.post("/me/faucet")

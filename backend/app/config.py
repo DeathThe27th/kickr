@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     txline_jwt: str = ""
     txline_api_token: str = ""
     privy_app_id: str = ""
+    # Part 2: @BotFather token. Blank disables the bot entirely — the Brain must
+    # run without it, so Telegram is never a startup dependency.
+    telegram_bot_token: str = ""
     solana_rpc: str = "https://api.devnet.solana.com"
     solana_keypair: str = ""  # base58 secret key
     demo_mode: bool = True

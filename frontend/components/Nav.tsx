@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useRef, useState } from "react";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ChipIcon, Wordmark } from "./shared";
 
@@ -43,8 +44,9 @@ export function AppNav({
   mode?: "live" | "demo";
   onMode?: (m: "live" | "demo") => void;
 }) {
-  const { logout, handle } = useAuth();
+  const { logout, handle, getToken } = useAuth();
   const [menu, setMenu] = useState(false);
+  const [linking, setLinking] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -100,6 +102,27 @@ export function AppNav({
                 >
                   Leaderboard
                 </Link>
+                <button
+                  className="block w-full px-4 py-2.5 text-left text-sm text-kickr-cream/90 hover:bg-kickr-navy-raised hover:text-kickr-cream disabled:opacity-50"
+                  disabled={linking}
+                  onClick={async () => {
+                    setLinking(true);
+                    try {
+                      const r = await api("/me/telegram/link-code", { method: "POST" }, await getToken());
+                      setMenu(false);
+                      // The code is single-use and short-lived, so open it now
+                      // rather than hand the user a link that expires unseen.
+                      window.open(r.url, "_blank", "noopener");
+                    } catch {
+                      setMenu(false);
+                      alert("Telegram isn't configured yet.");
+                    } finally {
+                      setLinking(false);
+                    }
+                  }}
+                >
+                  {linking ? "Linking…" : me?.telegram_linked ? "Relink Telegram" : "Link Telegram"}
+                </button>
                 <button
                   className="block w-full border-t border-kickr-navy-line px-4 py-2.5 text-left text-sm text-kickr-cream-dim hover:bg-kickr-navy-raised hover:text-kickr-cream"
                   onClick={() => {

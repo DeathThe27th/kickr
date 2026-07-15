@@ -146,8 +146,24 @@ class Settlement(Base):
     evidence: Mapped[dict] = mapped_column(JSON, default=dict)  # score/minute snapshot
 
 
+class TelegramLinkCode(Base):
+    """One-time code binding a Telegram chat to an authed user.
+
+    The bot only ever sees a code, never a Privy token, so a chat can't claim
+    an account it wasn't handed. Single-use and short-lived: a leaked code in a
+    group chat would otherwise let anyone bind themselves to that account.
+    """
+
+    __tablename__ = "telegram_link_codes"
+
+    code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class NotificationOutbox(Base):
-    """Part 2 hook — written, never consumed here."""
+    """Part 2 hook — written by the engine/ledger, consumed by app/telegram."""
 
     __tablename__ = "notification_outbox"
 

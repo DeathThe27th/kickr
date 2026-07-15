@@ -8,3 +8,4 @@ PyJWT[crypto]>=2.9
 python-dotenv>=1.0
 pytest>=8.0
 psycopg2-binary>=2.9
+aiogram>=3.13

@@ -42,3 +42,6 @@ services:
       # --- real auth (optional; omit to keep the demo dev sign-in) ---
       - key: PRIVY_APP_ID
         sync: false
+      # --- Telegram bot (optional; blank disables it, Brain runs regardless) ---
+      - key: TELEGRAM_BOT_TOKEN   # from @BotFather
+        sync: false

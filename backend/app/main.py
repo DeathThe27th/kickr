@@ -203,6 +203,32 @@ async def brain_loop(brain: Brain) -> None:
         await asyncio.sleep(interval)
 
 
+async def _start_telegram(tasks: list[asyncio.Task]) -> None:
+    """Bring up the bot, or don't. Telegram must never be able to stop the Brain
+    from serving markets, so every failure here is logged and swallowed."""
+    from .telegram.bot import dp, make_bot
+    from .telegram.outbox import drain_loop
+
+    bot = make_bot()
+    if bot is None:
+        log.info("Telegram disabled (no TELEGRAM_BOT_TOKEN)")
+        return
+    try:
+        info = await bot.get_me()
+    except Exception:
+        log.exception("Telegram token rejected — bot disabled")
+        return
+
+    runtime["telegram_username"] = info.username
+    runtime["telegram_bot"] = bot
+    # Drop anything queued while we were down: a burst of stale markets on
+    # startup is noise, and long-polling can't run beside a live webhook.
+    await bot.delete_webhook(drop_pending_updates=True)
+    tasks.append(asyncio.create_task(dp.start_polling(bot, handle_signals=False)))
+    tasks.append(asyncio.create_task(drain_loop(bot)))
+    log.info("Telegram bot @%s started", info.username)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
@@ -211,10 +237,12 @@ async def lifespan(app: FastAPI):
     runtime["engine"] = brain.engine
     runtime["receipts"] = brain.receipts
     _seed_fixtures(brain.source)
-    task = asyncio.create_task(brain_loop(brain))
+    tasks = [asyncio.create_task(brain_loop(brain))]
+    await _start_telegram(tasks)
     log.info("Kickr Brain started (demo_mode=%s)", settings.demo_mode)
     yield
-    task.cancel()
+    for task in tasks:
+        task.cancel()
 
 
 app = FastAPI(title="Kickr Brain", lifespan=lifespan)
