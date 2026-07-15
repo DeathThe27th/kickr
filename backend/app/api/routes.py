@@ -312,8 +312,16 @@ async def stream():
 
 # ----------------------------------------------------------------------- demo
 @router.post("/demo/fixtures/{fixture_id}/start")
-def demo_start(fixture_id: str, session: Session = Depends(get_session)):
+def demo_start(
+    fixture_id: str,
+    user: User = Depends(current_user),
+    session: Session = Depends(get_session),
+):
     """Spin any fixture into a simulated live match.
+
+    Authed: a sim costs real work on every tick — engine passes, odds writes and
+    receipt transactions that spend SOL — so this must not be callable by anyone
+    who finds the URL.
 
     Creates a separate demo fixture row rather than touching the real one, so a
     simulation never overwrites live data and the two can run side by side. The
@@ -348,7 +356,11 @@ def demo_start(fixture_id: str, session: Session = Depends(get_session)):
 
 
 @router.post("/demo/fixtures/{fixture_id}/stop")
-def demo_stop(fixture_id: str, session: Session = Depends(get_session)):
+def demo_stop(
+    fixture_id: str,
+    user: User = Depends(current_user),
+    session: Session = Depends(get_session),
+):
     row = session.get(Fixture, fixture_id)
     if row is None or not is_demo_id(row.txline_fixture_id):
         raise HTTPException(404, "no such demo fixture")
