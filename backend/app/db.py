@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import settings
@@ -28,9 +28,25 @@ if settings.database_url.startswith("sqlite"):
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 
+def _ensure_columns(conn) -> None:  # noqa: ANN001
+    """create_all() creates missing *tables*, never missing columns.
+
+    `fixtures.source` landed after the first deploy, so an existing Supabase
+    database would keep the old shape and every query naming it would fail.
+    Adding it in place keeps deploys a push rather than a manual ALTER, and is
+    a no-op once applied.
+    """
+    if "fixtures" not in inspect(conn).get_table_names():
+        return
+    columns = {c["name"] for c in inspect(conn).get_columns("fixtures")}
+    if "source" not in columns:
+        conn.execute(text("ALTER TABLE fixtures ADD COLUMN source VARCHAR(8) NOT NULL DEFAULT 'live'"))
+
+
 def init_db() -> None:
     Base.metadata.create_all(engine)
     with engine.begin() as conn:
+        _ensure_columns(conn)
         # `balances` view mirrors the Postgres migration (balance = SUM(amount)).
         # Postgres has no CREATE VIEW IF NOT EXISTS — use CREATE OR REPLACE there.
         verb = "CREATE VIEW IF NOT EXISTS" if engine.dialect.name == "sqlite" else "CREATE OR REPLACE VIEW"

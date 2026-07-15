@@ -72,6 +72,9 @@ class Fixture(Base):
     score_home: Mapped[int] = mapped_column(Integer, default=0)
     score_away: Mapped[int] = mapped_column(Integer, default=0)
     minute: Mapped[int] = mapped_column(Integer, default=0)
+    # live = the real TxLINE feed; demo = a simulated match (txline/simulator.py).
+    # Both coexist, so this is per-row rather than a server-wide mode.
+    source: Mapped[str] = mapped_column(String(8), default="live", server_default="live")
 
 
 class OddsSnapshot(Base):

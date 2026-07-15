@@ -15,6 +15,8 @@ from ..db import get_session
 from ..ledger import LedgerError, balance, bust_reset, claim_faucet, place_bet
 from ..models import Bet, Fixture, Market, Settlement, Transaction, User
 from ..receipts import explorer_url
+from ..txline.simulator import is_demo_id
+from ..txline.source import REGISTRY
 from .stream import broker
 
 router = APIRouter(prefix="/api")
@@ -67,6 +69,7 @@ def bracket(session: Session = Depends(get_session)):
                 "away": f.away,
                 "kickoff_at": f.kickoff_at.isoformat() if f.kickoff_at else None,
                 "status": f.status,
+                "source": f.source,
                 "score": [f.score_home, f.score_away],
                 "minute": f.minute,
                 "win_probs": _headline_probs(f.id),
@@ -305,6 +308,54 @@ async def stream():
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ----------------------------------------------------------------------- demo
+@router.post("/demo/fixtures/{fixture_id}/start")
+def demo_start(fixture_id: str, session: Session = Depends(get_session)):
+    """Spin any fixture into a simulated live match.
+
+    Creates a separate demo fixture row rather than touching the real one, so a
+    simulation never overwrites live data and the two can run side by side. The
+    demo id is derived from the real one, so restarting reuses the same row
+    instead of piling up duplicates.
+    """
+    real = session.get(Fixture, fixture_id)
+    if real is None:
+        raise HTTPException(404, "no such fixture")
+    if is_demo_id(real.txline_fixture_id):
+        raise HTTPException(400, "that fixture is already a demo")
+
+    sim = REGISTRY.start(real_txline_id=real.txline_fixture_id, home=real.home, away=real.away)
+
+    row = session.execute(
+        select(Fixture).where(Fixture.txline_fixture_id == sim.demo_id)
+    ).scalar_one_or_none()
+    if row is None:
+        row = Fixture(txline_fixture_id=sim.demo_id, home=real.home, away=real.away, source="demo")
+        session.add(row)
+    # A restart rewinds an existing row to its pre-match state; otherwise the
+    # engine would see a finished match and never track it again.
+    row.home, row.away = real.home, real.away
+    row.stage, row.bracket_slot = real.stage, None
+    row.kickoff_at, row.status = sim.kickoff_at, "upcoming"
+    row.score_home = row.score_away = row.minute = 0
+    row.source = "demo"
+    session.flush()
+
+    broker.publish({"event": "demo_started", "fixture_id": row.id})
+    return {"ok": True, "fixture_id": row.id, "txline_fixture_id": sim.demo_id, "kickoff_at": sim.kickoff_at.isoformat()}
+
+
+@router.post("/demo/fixtures/{fixture_id}/stop")
+def demo_stop(fixture_id: str, session: Session = Depends(get_session)):
+    row = session.get(Fixture, fixture_id)
+    if row is None or not is_demo_id(row.txline_fixture_id):
+        raise HTTPException(404, "no such demo fixture")
+    REGISTRY.stop(row.txline_fixture_id)
+    row.status = "finished"
+    broker.publish({"event": "demo_stopped", "fixture_id": row.id})
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------- admin

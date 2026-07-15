@@ -21,7 +21,8 @@ from .markets.engine import MarketEngine
 from .models import Fixture, Market, OddsSnapshot
 from .pricing.engine import price_fixture
 from .receipts import ReceiptQueue
-from .txline.source import make_source
+from .txline.simulator import is_demo_id
+from .txline.source import REGISTRY, make_source
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("kickr.main")
@@ -55,8 +56,11 @@ def _seed_fixtures(source) -> None:
             else:
                 row.home, row.away, row.kickoff_at = nf.home, nf.away, nf.kickoff_at
             if row.status == "upcoming" and row.kickoff_at.replace(tzinfo=timezone.utc) < now:
-                # past fixtures without live coverage render as finished
-                if not settings.demo_mode or nf.txline_fixture_id != _demo_id():
+                # past fixtures without live coverage render as finished — but a
+                # simulated match is driven by its own clock, not the calendar,
+                # so finishing it here would kill it the moment it kicked off.
+                is_scripted_demo = settings.demo_mode and nf.txline_fixture_id == _demo_id()
+                if not is_scripted_demo and not is_demo_id(nf.txline_fixture_id):
                     row.status = "finished"
 
 
@@ -86,7 +90,11 @@ class Brain:
     def tick(self) -> list[dict]:
         events: list[dict] = []
         now = time.monotonic()
-        if now - self._last_fixture_refresh >= (5 if settings.demo_mode else 600):
+        REGISTRY.sweep()  # drop long-finished sims so they stop being re-seeded
+        # A sim that was just started needs its fixture row promptly, so refresh
+        # fast whenever one is running rather than waiting out the live interval.
+        refresh_every = 5 if (settings.demo_mode or REGISTRY.active()) else 600
+        if now - self._last_fixture_refresh >= refresh_every:
             _seed_fixtures(self.source)
             self._last_fixture_refresh = now
 
@@ -100,7 +108,9 @@ class Brain:
                 # cycles upcoming->live->finished->(restart)->upcoming, so the engine
                 # must keep re-syncing its status even after it has finished, or a
                 # restart would leave it stuck 'finished' and never track again.
-                is_demo_fixture = settings.demo_mode and fixture.txline_fixture_id == _demo_id()
+                is_demo_fixture = (
+                    settings.demo_mode and fixture.txline_fixture_id == _demo_id()
+                ) or is_demo_id(fixture.txline_fixture_id)
                 tracked = (
                     is_demo_fixture
                     or fixture.status == "live"
@@ -110,12 +120,15 @@ class Brain:
                     continue
 
                 in_play = fixture.status == "live"
+                # Simulated matches run a compressed clock (4s per match minute),
+                # so they need the demo cadence even when the server is live.
+                fast = settings.demo_mode or is_demo_id(fixture.txline_fixture_id)
                 state = None
-                if self._due(fixture.txline_fixture_id, "scores", 2 if settings.demo_mode else (7 if in_play else 60)):
+                if self._due(fixture.txline_fixture_id, "scores", 2 if fast else (7 if in_play else 60)):
                     state = self.source.match_state(fixture.txline_fixture_id)
 
                 odds = []
-                if self._due(fixture.txline_fixture_id, "odds", 2 if settings.demo_mode else (12 if in_play else 25)):
+                if self._due(fixture.txline_fixture_id, "odds", 2 if fast else (12 if in_play else 25)):
                     odds = self.source.odds_snapshot(fixture.txline_fixture_id, in_play)
 
                 priced = None
@@ -161,8 +174,10 @@ class Brain:
 
 
 async def brain_loop(brain: Brain) -> None:
-    interval = 2.0 if settings.demo_mode else 5.0
     while True:
+        # Re-read each pass: a sim started at runtime needs the fast cadence to
+        # keep up with its compressed clock, even on a live server.
+        interval = 2.0 if (settings.demo_mode or REGISTRY.active()) else 5.0
         try:
             events = await asyncio.to_thread(brain.tick)
             for ev in events:
