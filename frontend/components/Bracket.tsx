@@ -1,9 +1,9 @@
 "use client";
 
-/** The 2026 knockout tree (§8.2), dark system. R32 → R16 → QF → SF → F columns,
- * horizontally scrollable on mobile. Nodes are interactive cards: upcoming
- * (kickoff + favourite win-prob bar), live (yellow accent, pulse, score+minute,
- * glow), finished (dimmed, final score). */
+/** The 2026 knockout rounds (§8.2), dark system. One grid section per round,
+ * R32 → Final. Nodes are interactive cards: upcoming (kickoff + favourite
+ * win-prob bar), live (yellow accent, pulse, score+minute, glow), finished
+ * (dimmed, final score). */
 
 import React from "react";
 
@@ -122,40 +122,25 @@ function Node({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => void }) {
 
 export function Bracket({ fixtures, onOpen }: { fixtures: FixtureT[]; onOpen: (f: FixtureT) => void }) {
   return (
-    <div className="overflow-x-auto pb-4">
-      <div className="flex min-w-max gap-6">
-        {STAGES.map((stage) => {
-          const nodes = fixtures
-            .filter((f) => f.stage === stage.key)
-            .sort((a, b) => (a.bracket_slot ?? "").localeCompare(b.bracket_slot ?? "", undefined, { numeric: true }));
-          if (nodes.length === 0) return null;
-          return (
-            <div key={stage.key} className="flex w-56 flex-col">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-kickr-cream-dim">
-                {stage.label}
-              </h3>
-              <div className="flex flex-1 flex-col justify-around gap-3">
-                {nodes.map((f) => (
-                  <Node key={f.id} f={f} onOpen={onOpen} />
-                ))}
-              </div>
+    <div className="space-y-10">
+      {STAGES.map((stage) => {
+        const nodes = fixtures
+          .filter((f) => f.stage === stage.key)
+          .sort((a, b) => (a.bracket_slot ?? "").localeCompare(b.bracket_slot ?? "", undefined, { numeric: true }));
+        if (nodes.length === 0) return null;
+        return (
+          <section key={stage.key}>
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-kickr-cream-dim">
+              {stage.label}
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {nodes.map((f) => (
+                <Node key={f.id} f={f} onOpen={onOpen} />
+              ))}
             </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export function GroupList({ fixtures, onOpen }: { fixtures: FixtureT[]; onOpen: (f: FixtureT) => void }) {
-  const groups = fixtures
-    .filter((f) => f.stage === "group")
-    .sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at));
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {groups.map((f) => (
-        <Node key={f.id} f={f} onOpen={onOpen} />
-      ))}
+          </section>
+        );
+      })}
     </div>
   );
 }

@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api, fmtClock, subscribeStream } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { AppNav } from "@/components/Nav";
-import { Bracket, GroupList, FixtureT } from "@/components/Bracket";
+import { Bracket, FixtureT } from "@/components/Bracket";
 import { MarketCard, MarketT } from "@/components/MarketCard";
 import { StakeSheet } from "@/components/StakeSheet";
 import { LivePill, Toast } from "@/components/shared";
@@ -19,7 +19,6 @@ export default function AppHome() {
   const { authed, ready, getToken } = useAuth();
   const [me, setMe] = useState<any>(null);
   const [fixtures, setFixtures] = useState<FixtureT[]>([]);
-  const [tab, setTab] = useState<"bracket" | "group">("bracket");
   const [open, setOpen] = useState<FixtureT | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -84,7 +83,6 @@ export default function AppHome() {
   }
 
   const bracketFixtures = fixtures.filter((f) => f.stage !== "group");
-  const hasGroup = fixtures.some((f) => f.stage === "group");
 
   if (!ready || !authed) return null;
 
@@ -95,26 +93,10 @@ export default function AppHome() {
       <HeroBand live={liveFixtures} next={nextFixture} onOpen={setOpen} />
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        {/* tabs */}
-        <div className="mb-5 flex items-center gap-2">
-          <TabButton active={tab === "bracket"} onClick={() => setTab("bracket")}>
-            Bracket
-          </TabButton>
-          {hasGroup && (
-            <TabButton active={tab === "group"} onClick={() => setTab("group")}>
-              Group stage
-            </TabButton>
-          )}
-        </div>
-
-        {tab === "bracket" ? (
-          bracketFixtures.length ? (
-            <Bracket fixtures={bracketFixtures} onOpen={setOpen} />
-          ) : (
-            <EmptyState>Knockout fixtures appear here once the draw is set.</EmptyState>
-          )
+        {bracketFixtures.length ? (
+          <Bracket fixtures={bracketFixtures} onOpen={setOpen} />
         ) : (
-          <GroupList fixtures={fixtures} onOpen={setOpen} />
+          <EmptyState>Knockout fixtures appear here once the draw is set.</EmptyState>
         )}
       </main>
 
@@ -139,21 +121,6 @@ function EmptyState({ children }: { children: React.ReactNode }) {
     <div className="rounded-2xl border border-dashed border-kickr-navy-line py-16 text-center text-sm text-kickr-cream-dim">
       {children}
     </div>
-  );
-}
-
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-        active
-          ? "bg-kickr-yellow text-kickr-navy"
-          : "border border-kickr-navy-line text-kickr-cream-dim hover:border-kickr-yellow/40 hover:text-kickr-cream"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 
