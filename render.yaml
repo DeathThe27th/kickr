@@ -24,13 +24,17 @@ services:
       - key: MARGIN
         value: "0.05"
       # --- Solana receipts (optional; omit SOLANA_KEYPAIR -> receipts store null) ---
+      # Stays on devnet independently of the TxLINE network — receipts are
+      # kickr's own memo txs and have no reason to cost real SOL.
       - key: SOLANA_RPC
         value: https://api.devnet.solana.com
       - key: SOLANA_KEYPAIR    # base58 secret of a funded devnet wallet
         sync: false
       # --- live TxLINE (only used when DEMO_MODE=false) ---
+      # Must match the network the JWT/API token were activated on.
+      # Devnet: https://txline-dev.txodds.com
       - key: TXLINE_API_ORIGIN
-        value: https://txline-dev.txodds.com
+        value: https://txline.txodds.com
       - key: TXLINE_JWT
         sync: false
       - key: TXLINE_API_TOKEN

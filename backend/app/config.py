@@ -9,7 +9,9 @@ class Settings(BaseSettings):
 
     # --- Infrastructure ---
     database_url: str = "sqlite:///./kickr.db"  # Supabase Postgres in prod
-    txline_api_origin: str = "https://txline-dev.txodds.com"
+    # Must match the network the JWT/API token were activated on
+    # (chain/scripts/activate-txline.ts). Devnet: https://txline-dev.txodds.com
+    txline_api_origin: str = "https://txline.txodds.com"
     txline_jwt: str = ""
     txline_api_token: str = ""
     privy_app_id: str = ""

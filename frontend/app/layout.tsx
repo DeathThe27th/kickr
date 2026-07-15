@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter, JetBrains_Mono, Pacifico } from "next/font/google";
+import { Space_Grotesk, Inter, Azeret_Mono, Pacifico } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 
@@ -8,20 +8,22 @@ import { AuthProvider } from "@/lib/auth";
 //  Bricolage Grotesque = editorial character.)
 const display = Space_Grotesk({ weight: "700", subsets: ["latin"], variable: "--font-display" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
+// Figures: Azeret Mono — squared terminals and tall tabular figures, so odds,
+// clocks and scores read like an instrument rather than body copy.
+const mono = Azeret_Mono({ subsets: ["latin"], variable: "--font-mono" });
 // Wordmark script — a stand-in for the hand-lettered "kickr." logo mark.
 // Swap for the real SVG when exported.
 const script = Pacifico({ weight: "400", subsets: ["latin"], variable: "--font-script" });
 
 export const metadata: Metadata = {
-  title: "kickr — markets that live inside the match",
+  title: "kickr — markets that live and die inside the match",
   description:
-    "Micro prediction markets on every World Cup fixture — priced live, settled in seconds, receipts on-chain.",
+    "Live micro markets for every World Cup fixture that settle in seconds with onchain receipts.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${inter.variable} ${jetbrains.variable} ${script.variable}`}>
+    <html lang="en" className={`${display.variable} ${inter.variable} ${mono.variable} ${script.variable}`}>
       <body>
         <AuthProvider>{children}</AuthProvider>
       </body>

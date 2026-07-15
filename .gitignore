@@ -4,6 +4,7 @@
 .env.*.local
 chain/.keys/
 chain/.txline-credentials.json
+chain/.txline-credentials.*.json
 *.pem
 *-keypair.json
 

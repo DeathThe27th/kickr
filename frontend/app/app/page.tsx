@@ -92,11 +92,11 @@ export default function AppHome() {
     <div className="min-h-screen bg-kickr-navy text-kickr-cream">
       <AppNav me={me} onFaucet={faucet} />
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <LiveNow live={liveFixtures} next={nextFixture} onOpen={setOpen} />
+      <HeroBand live={liveFixtures} next={nextFixture} onOpen={setOpen} />
 
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         {/* tabs */}
-        <div className="mb-5 mt-10 flex items-center gap-2">
+        <div className="mb-5 flex items-center gap-2">
           <TabButton active={tab === "bracket"} onClick={() => setTab("bracket")}>
             Bracket
           </TabButton>
@@ -157,8 +157,11 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   );
 }
 
-// --------------------------------------------------------------- Live Now card
-function LiveNow({
+// ------------------------------------------------------------------ hero band
+/** The fixture in play is the page's subject, so it gets a band rather than a
+ *  card in the stack: score as the headline, the hottest markets flush beneath
+ *  it on hairlines. Falls back to a countdown when nothing is live. */
+function HeroBand({
   live,
   next,
   onOpen,
@@ -169,18 +172,24 @@ function LiveNow({
 }) {
   if (live.length > 0) {
     return (
-      <div className="grid gap-5">
+      <div className="divide-y divide-kickr-navy-line border-b border-kickr-navy-line">
         {live.map((f) => (
-          <LiveFixtureCard key={f.id} f={f} onOpen={onOpen} />
+          <LiveFixtureBand key={f.id} f={f} onOpen={onOpen} />
         ))}
       </div>
     );
   }
-  if (next) return <NextKickoff f={next} onOpen={onOpen} />;
-  return <EmptyState>No fixtures scheduled right now.</EmptyState>;
+  if (next) return <NextKickoffBand f={next} onOpen={onOpen} />;
+  return (
+    <section className="border-b border-kickr-navy-line bg-kickr-navy-surface">
+      <div className="mx-auto max-w-7xl px-4 py-12 text-center text-sm text-kickr-cream-dim sm:px-6">
+        No fixtures scheduled right now. Markets open at kickoff.
+      </div>
+    </section>
+  );
 }
 
-function LiveFixtureCard({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => void }) {
+function LiveFixtureBand({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => void }) {
   const [markets, setMarkets] = useState<MarketT[]>([]);
   useEffect(() => {
     let alive = true;
@@ -201,41 +210,50 @@ function LiveFixtureCard({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => 
   const hot = markets.filter((m) => m.status === "open").slice(0, 3);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-kickr-yellow/40 bg-kickr-navy-surface shadow-live-glow">
-      {/* live glow wash */}
-      <div className="pointer-events-none absolute -top-24 right-0 h-48 w-2/3 bg-kickr-yellow/10 blur-3xl" />
+    <section className="relative overflow-hidden bg-kickr-navy-surface">
+      {/* Live wash — yellow only ever means "in play". */}
+      <div className="pointer-events-none absolute -top-40 right-0 h-72 w-2/3 bg-kickr-yellow/10 blur-3xl" />
 
-      <div className="relative flex flex-wrap items-center justify-between gap-4 border-b border-kickr-navy-line px-6 py-5">
-        <div className="flex items-center gap-4">
+      <div className="relative mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-x-8 gap-y-6 px-4 py-9 sm:px-6">
+        <div>
           <LivePill minute={f.minute} />
-          <button onClick={() => onOpen(f)} className="text-left">
-            <span className="font-display text-2xl text-kickr-cream sm:text-3xl">
-              {f.home} <span className="num text-kickr-yellow">{f.score.join("–")}</span> {f.away}
+          <button onClick={() => onOpen(f)} className="mt-3.5 block text-left">
+            <span className="flex flex-wrap items-baseline gap-x-4 font-display text-3xl leading-none text-kickr-cream sm:text-4xl">
+              {f.home}
+              <span className="num text-4xl font-bold text-kickr-yellow sm:text-5xl">{f.score.join("–")}</span>
+              {f.away}
             </span>
           </button>
         </div>
         <button
           onClick={() => onOpen(f)}
-          className="rounded-full bg-kickr-yellow px-4 py-2 text-sm font-bold text-kickr-navy transition-transform hover:-translate-y-0.5 active:translate-y-0"
+          className="rounded-full bg-kickr-yellow px-5 py-2.5 text-sm font-bold text-kickr-navy transition-transform hover:-translate-y-0.5 active:translate-y-0"
         >
           Open all markets →
         </button>
       </div>
 
-      <div className="relative grid gap-3 p-5 sm:grid-cols-3">
-        {hot.length ? (
-          hot.map((m) => <MarketCard key={m.id} market={m} onPick={() => onOpen(f)} />)
-        ) : (
-          <p className="py-6 text-center text-sm text-kickr-cream-dim sm:col-span-3">
-            New micro markets open on the next goal…
-          </p>
-        )}
+      {/* Hot markets sit flush on hairlines — the band already supplies the surface. */}
+      <div className="relative border-t border-kickr-navy-line">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          {hot.length ? (
+            <div className="grid gap-px bg-kickr-navy-line sm:grid-cols-3">
+              {hot.map((m) => (
+                <MarketCard key={m.id} market={m} variant="flat" onPick={() => onOpen(f)} />
+              ))}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-kickr-cream-dim">
+              New micro markets open on the next goal…
+            </p>
+          )}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-function NextKickoff({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => void }) {
+function NextKickoffBand({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => void }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -243,19 +261,31 @@ function NextKickoff({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => void
   }, []);
   const secs = Math.max(0, Math.floor((new Date(f.kickoff_at).getTime() - now) / 1000));
   return (
-    <button
-      onClick={() => onOpen(f)}
-      className="block w-full rounded-3xl border border-kickr-navy-line bg-kickr-navy-surface p-6 text-left transition-colors hover:border-kickr-yellow/40"
-    >
-      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-kickr-cream-dim">Next kickoff</p>
-      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-3">
-        <span className="font-display text-2xl text-kickr-cream">
-          {f.home} <span className="text-kickr-cream-dim">v</span> {f.away}
-        </span>
-        <span className="num text-4xl font-bold text-kickr-yellow">{fmtClock(secs)}</span>
+    <section className="border-b border-kickr-navy-line bg-kickr-navy-surface">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <button
+          onClick={() => onOpen(f)}
+          className="group flex w-full flex-wrap items-end justify-between gap-x-8 gap-y-6 py-9 text-left"
+        >
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-kickr-cream-dim">
+              Next kickoff
+            </span>
+            <span className="mt-3.5 flex flex-wrap items-baseline gap-x-3 font-display text-3xl leading-none text-kickr-cream sm:text-4xl">
+              {f.home} <span className="text-kickr-cream-dim">v</span> {f.away}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="num block text-4xl font-bold leading-none text-kickr-yellow sm:text-5xl">
+              {fmtClock(secs)}
+            </span>
+            <span className="mt-2.5 block text-sm text-kickr-cream-dim transition-colors group-hover:text-kickr-cream">
+              Pre-match markets →
+            </span>
+          </div>
+        </button>
       </div>
-      <p className="mt-2 text-sm text-kickr-cream-dim">Tap for pre-match markets →</p>
-    </button>
+    </section>
   );
 }
 
