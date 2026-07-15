@@ -11,6 +11,45 @@ import { useAuth } from "@/lib/auth";
 import { MarketT } from "@/components/MarketCard";
 import { OddsNum, Wordmark } from "@/components/shared";
 
+/** One worked micro market, end to end. The figures are real and reconcile:
+ *  λ=2.35 reproduces P(over 2.5)=0.42 under Poisson, and the quoted pair carries
+ *  exactly the 5% overround the engine applies (build.md §3.2–3.4). Recheck them
+ *  if MARGIN changes — a derivation that doesn't add up is worse than no figures. */
+const DERIVATION: { k: string; d: string; rows: [string, string][] }[] = [
+  {
+    k: "TxLINE feed",
+    d: "StablePrice arrives de-margined from the on-chain oracle — the real book, not a scrape.",
+    rows: [
+      ["Over 2.5", "2.40"],
+      ["Under 2.5", "1.72"],
+    ],
+  },
+  {
+    k: "De-vig",
+    d: "Invert to probabilities and normalise, so the pair sums to exactly one.",
+    rows: [
+      ["P(over)", "0.42"],
+      ["P(under)", "0.58"],
+    ],
+  },
+  {
+    k: "Solve λ",
+    d: "Bisect for the goal rate that reproduces that price under Poisson. This is the whole trick.",
+    rows: [
+      ["λ rem", "2.35"],
+      ["search", "0.01–8"],
+    ],
+  },
+  {
+    k: "Quote",
+    d: "Apply λ to the window left on the clock, add the overround, open the market.",
+    rows: [
+      ["Goal by 25′", "Yes 4.19"],
+      ["overround", "1.05"],
+    ],
+  },
+];
+
 export default function Landing() {
   const { authed, login, ready } = useAuth();
   const [fixtures, setFixtures] = useState<any[]>([]);
@@ -179,19 +218,53 @@ export default function Landing() {
       </section>
 
       {/* -------------------------------------------------------- how it works */}
-      <section className="border-t border-kickr-navy-line">
-        <div className="mx-auto grid max-w-7xl gap-px overflow-hidden bg-kickr-navy-line sm:grid-cols-3">
-          {[
-            { k: "Priced live", d: "Every quote is extracted from the live odds feed — the goal rate baked straight out of the market." },
-            { k: "Settled in seconds", d: "A goal locks and settles the markets it decides, then pays winners instantly from the ledger." },
-            { k: "Receipts on-chain", d: "Every market open and settle is hashed and committed to Solana devnet. Verifiable, not vibes." },
-          ].map((c, i) => (
-            <div key={c.k} className="reveal bg-kickr-navy px-6 py-12" style={{ transitionDelay: `${i * 80}ms` }}>
-              <span className="font-mono text-sm text-kickr-yellow">0{i + 1}</span>
-              <h3 className="mt-3 font-display text-xl text-kickr-cream">{c.k}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-kickr-cream-dim">{c.d}</p>
-            </div>
-          ))}
+      <section id="how" className="border-t border-kickr-navy-line">
+        <div className="mx-auto max-w-7xl px-6 py-20 sm:py-28">
+          <div className="reveal max-w-2xl">
+            <h2 className="font-display text-3xl text-kickr-cream sm:text-4xl">How a goal becomes a price</h2>
+            <p className="mt-3 leading-relaxed text-kickr-cream-dim">
+              No proprietary model, no hand-set lines. Every quote is derived from TxLINE&apos;s live odds
+              feed. This is the entire chain, for one real micro market.
+            </p>
+          </div>
+
+          <div className="reveal mt-10 grid gap-px overflow-hidden rounded-2xl border border-kickr-navy-line bg-kickr-navy-line md:grid-cols-4">
+            {DERIVATION.map((step, i) => (
+              <div
+                key={step.k}
+                className="bg-kickr-navy-surface px-5 py-6"
+                style={{ transitionDelay: `${i * 70}ms` }}
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-kickr-yellow">{step.k}</p>
+                <p className="mt-2 text-sm leading-relaxed text-kickr-cream/85">{step.d}</p>
+                <dl className="num mt-4 space-y-1.5 text-sm">
+                  {step.rows.map(([label, value]) => (
+                    <div
+                      key={label + value}
+                      className="flex items-baseline justify-between gap-3 border-t border-kickr-navy-line pt-1.5"
+                    >
+                      <dt className="text-kickr-cream-dim">{label}</dt>
+                      <dd className="text-kickr-cream">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+          </div>
+
+          {/* The line the whole product rests on. */}
+          <div className="reveal mt-6 overflow-x-auto rounded-2xl border border-kickr-yellow/25 bg-kickr-yellow/[0.04] px-6 py-6">
+            <p className="num whitespace-nowrap text-center text-sm text-kickr-cream sm:text-base">
+              P(≥1 goal in next <span className="text-kickr-yellow">m</span>) = 1 − exp(−λ
+              <span className="text-kickr-cream-dim">rem</span> · <span className="text-kickr-yellow">m</span> ÷ minutes
+              remaining)
+            </p>
+          </div>
+          <p className="reveal mx-auto mt-6 max-w-2xl text-center text-sm leading-relaxed text-kickr-cream-dim">
+            λ comes out of the market, never out of us — so a kickr price can&apos;t drift from the book it
+            was born in. When the goal lands, Tx Scores settles the markets it decides, winners are paid from
+            the ledger, and both the open and the settle are hashed to Solana.
+          </p>
         </div>
       </section>
 

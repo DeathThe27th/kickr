@@ -1,26 +1,34 @@
 "use client";
 
-/** Authed home = the bracket (build.md §8.2), dark system.
- *  - Live Now hero card pinned when a fixture is in-play (or next-kickoff countdown).
- *  - The 2026 knockout tree (interactive node cards) + a group-stage tab.
- *  - Tap a node -> drawer with Markets / Live / History tabs and the stake flow.
+/** Authed home = the picks board.
+ *  Cards are market picks, not fixtures: each one carries its own match context
+ *  so the page is only ever the things you can actually bet on right now. They
+ *  exist only while a match is live, which is when micro markets exist.
+ *
+ *  Live mode shows the real TxLINE feed. Demo mode simulates any fixture on
+ *  demand (backend: txline/simulator.py) and the two run side by side, so
+ *  demoing never hides a real match.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, fmtClock, subscribeStream } from "@/lib/api";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { api, subscribeStream } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { AppNav } from "@/components/Nav";
-import { Bracket, FixtureT } from "@/components/Bracket";
 import { MarketCard, MarketT } from "@/components/MarketCard";
 import { StakeSheet } from "@/components/StakeSheet";
 import { LivePill, TeamFlag, Toast } from "@/components/shared";
-import { flagUrl } from "@/lib/flags";
+import { FixtureT, demoIdFor } from "@/lib/types";
+
+type Mode = "live" | "demo";
 
 export default function AppHome() {
   const { authed, ready, getToken } = useAuth();
   const [me, setMe] = useState<any>(null);
   const [fixtures, setFixtures] = useState<FixtureT[]>([]);
+  const [mode, setMode] = useState<Mode>("live");
   const [open, setOpen] = useState<FixtureT | null>(null);
+  const [pick, setPick] = useState<{ market: MarketT; outcome: string } | null>(null);
+  const [starting, setStarting] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,7 +41,7 @@ export default function AppHome() {
     } catch {}
   }, [getToken]);
 
-  const loadBracket = useCallback(async () => {
+  const loadFixtures = useCallback(async () => {
     try {
       const br = await api("/bracket");
       setFixtures(br.fixtures);
@@ -43,19 +51,23 @@ export default function AppHome() {
   useEffect(() => {
     if (!ready || !authed) return;
     loadMe();
-    loadBracket();
+    loadFixtures();
     const unsub = subscribeStream((ev) => {
-      if (["market_open", "market_locked", "market_settled", "score_update", "demo_restarted"].includes(ev.event)) {
-        loadBracket();
+      if (
+        ["market_open", "market_locked", "market_settled", "score_update", "demo_started", "demo_stopped", "demo_restarted"].includes(
+          ev.event
+        )
+      ) {
+        loadFixtures();
       }
       if (ev.event === "market_settled") loadMe();
     });
-    const t = setInterval(loadBracket, 10000);
+    const t = setInterval(loadFixtures, 5000);
     return () => {
       unsub();
       clearInterval(t);
     };
-  }, [ready, authed, loadMe, loadBracket]);
+  }, [ready, authed, loadMe, loadFixtures]);
 
   useEffect(() => {
     if (!open) return;
@@ -64,12 +76,42 @@ export default function AppHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fixtures]);
 
-  const liveFixtures = useMemo(() => fixtures.filter((f) => f.status === "live"), [fixtures]);
-  const nextFixture = useMemo(
+  // "Live" for picks means bettable, not just in-play: the four pre-match
+  // markets open before kickoff, and filtering on status==="live" alone would
+  // make them unreachable. The engine only opens them near kickoff, so this
+  // stays scoped — no group-stage history creeps back in.
+  const liveFixtures = useMemo(
+    () =>
+      fixtures.filter(
+        (f) =>
+          f.source === mode &&
+          (f.status === "live" || (f.status === "upcoming" && f.open_markets > 0))
+      ),
+    [fixtures, mode]
+  );
+  const marketsByFixture = useLiveMarkets(liveFixtures);
+
+  // A pick is one market plus the match it belongs to — the card is the unit,
+  // so the grid mixes markets across every live match without regrouping.
+  const picks = useMemo(
+    () =>
+      liveFixtures.flatMap((f) =>
+        (marketsByFixture[f.id] ?? [])
+          .filter((m) => m.status === "open" || m.status === "suspended")
+          .map((m) => ({ fixture: f, market: m }))
+      ),
+    [liveFixtures, marketsByFixture]
+  );
+
+  const runningDemoIds = useMemo(
+    () => new Set(fixtures.filter((f) => f.source === "demo").map((f) => f.txline_fixture_id)),
+    [fixtures]
+  );
+  const startable = useMemo(
     () =>
       fixtures
-        .filter((f) => f.status === "upcoming" && f.kickoff_at)
-        .sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at))[0] ?? null,
+        .filter((f) => f.source === "live")
+        .sort((a, b) => (b.kickoff_at ?? "").localeCompare(a.kickoff_at ?? "")),
     [fixtures]
   );
 
@@ -83,29 +125,62 @@ export default function AppHome() {
     }
   }
 
-  const bracketFixtures = fixtures.filter((f) => f.stage !== "group");
+  async function startDemo(f: FixtureT) {
+    setStarting(f.id);
+    try {
+      await api(`/demo/fixtures/${f.id}/start`, { method: "POST" }, await getToken());
+      setToast(`${f.home} v ${f.away} kicks off in a few seconds`);
+      loadFixtures();
+    } catch {
+      setToast("Could not start that match");
+    } finally {
+      setStarting(null);
+    }
+  }
 
   if (!ready || !authed) return null;
 
   return (
     <div className="min-h-screen bg-kickr-navy text-kickr-cream">
-      <AppNav me={me} onFaucet={faucet} />
-
-      <HeroBand live={liveFixtures} next={nextFixture} onOpen={setOpen} />
+      <AppNav me={me} onFaucet={faucet} mode={mode} onMode={setMode} />
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        {bracketFixtures.length ? (
-          <Bracket fixtures={bracketFixtures} onOpen={setOpen} />
+        {picks.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {picks.map(({ fixture, market }) => (
+              <PickCard
+                key={market.id}
+                fixture={fixture}
+                market={market}
+                onOpenFixture={() => setOpen(fixture)}
+                onPick={(outcome) => setPick({ market, outcome })}
+              />
+            ))}
+          </div>
         ) : (
-          <EmptyState>Knockout fixtures appear here once the draw is set.</EmptyState>
+          <NoPicks mode={mode} onDemo={() => setMode("demo")} live={liveFixtures.length > 0} />
+        )}
+
+        {mode === "demo" && (
+          <DemoPicker
+            fixtures={startable}
+            running={runningDemoIds}
+            starting={starting}
+            onStart={startDemo}
+            compact={picks.length > 0}
+          />
         )}
       </main>
 
-      {open && (
-        <FixtureDrawer
-          fixture={open}
-          onClose={() => setOpen(null)}
-          onBetPlaced={(t) => {
+      {open && <FixtureDrawer fixture={open} onClose={() => setOpen(null)} />}
+
+      {pick && (
+        <StakeSheet
+          market={pick.market}
+          outcome={pick.outcome}
+          onClose={() => setPick(null)}
+          onPlaced={(t) => {
+            setPick(null);
             setToast(`Ticket: ${t.ticket.stake} on ${t.ticket.outcome} @ ${t.ticket.odds_locked.toFixed(2)}`);
             loadMe();
           }}
@@ -117,214 +192,197 @@ export default function AppHome() {
   );
 }
 
-function EmptyState({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-kickr-navy-line py-16 text-center text-sm text-kickr-cream-dim">
-      {children}
-    </div>
-  );
-}
+/** Markets for every live fixture at once. Keyed by fixture so a pick can carry
+ *  its match with it; re-fetches on any price or market event. */
+function useLiveMarkets(fixtures: FixtureT[]): Record<string, MarketT[]> {
+  const [byFixture, setByFixture] = useState<Record<string, MarketT[]>>({});
+  const key = fixtures.map((f) => f.id).join(",");
 
-/** The two nations' colours bleeding in behind the score — the fixture's own
- *  imagery rather than stock atmosphere. Sits under the live wash, and drops
- *  out entirely for unresolved slots ("Winner SF1"). */
-function FlagWash({ home, away }: { home: string; away: string }) {
-  const h = flagUrl(home, 320);
-  const a = flagUrl(away, 320);
-  if (!h && !a) return null;
-  return (
-    <div className="pointer-events-none absolute inset-0 opacity-[0.13]" aria-hidden>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {h && <img src={h} alt="" className="absolute inset-y-0 left-0 h-full w-3/5 object-cover blur-3xl" />}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {a && <img src={a} alt="" className="absolute inset-y-0 right-0 h-full w-3/5 object-cover blur-3xl" />}
-    </div>
-  );
-}
-
-// ------------------------------------------------------------------ hero band
-/** The fixture in play is the page's subject, so it gets a band rather than a
- *  card in the stack: score as the headline, the hottest markets flush beneath
- *  it on hairlines. Falls back to a countdown when nothing is live. */
-function HeroBand({
-  live,
-  next,
-  onOpen,
-}: {
-  live: FixtureT[];
-  next: FixtureT | null;
-  onOpen: (f: FixtureT) => void;
-}) {
-  if (live.length > 0) {
-    return (
-      <div className="divide-y divide-kickr-navy-line border-b border-kickr-navy-line">
-        {live.map((f) => (
-          <LiveFixtureBand key={f.id} f={f} onOpen={onOpen} />
-        ))}
-      </div>
-    );
-  }
-  if (next) return <NextKickoffBand f={next} onOpen={onOpen} />;
-  return (
-    <section className="border-b border-kickr-navy-line bg-kickr-navy-surface">
-      <div className="mx-auto max-w-7xl px-4 py-12 text-center text-sm text-kickr-cream-dim sm:px-6">
-        No fixtures scheduled right now. Markets open at kickoff.
-      </div>
-    </section>
-  );
-}
-
-function LiveFixtureBand({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => void }) {
-  const [markets, setMarkets] = useState<MarketT[]>([]);
   useEffect(() => {
+    if (!fixtures.length) {
+      setByFixture({});
+      return;
+    }
     let alive = true;
-    const load = () =>
-      api(`/fixtures/${f.id}/markets`)
-        .then((r) => alive && setMarkets(r.markets))
-        .catch(() => {});
+    const load = async () => {
+      const entries = await Promise.all(
+        fixtures.map(async (f) => {
+          try {
+            const r = await api(`/fixtures/${f.id}/markets`);
+            return [f.id, r.markets as MarketT[]] as const;
+          } catch {
+            return [f.id, [] as MarketT[]] as const;
+          }
+        })
+      );
+      if (alive) setByFixture(Object.fromEntries(entries));
+    };
     load();
     const unsub = subscribeStream((ev) => {
-      if (ev.fixture_id === f.id || ev.event === "price_update") load();
+      if (ev.event === "price_update" || fixtures.some((f) => f.id === ev.fixture_id)) load();
     });
+    const t = setInterval(load, 4000);
     return () => {
       alive = false;
       unsub();
+      clearInterval(t);
     };
-  }, [f.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
-  const hot = markets.filter((m) => m.status === "open").slice(0, 3);
+  return byFixture;
+}
 
+/** One market, carrying the match it belongs to. The strip is the way into the
+ *  fixture's depth (live tab, history, receipts); the outcomes bet directly. */
+function PickCard({
+  fixture,
+  market,
+  onPick,
+  onOpenFixture,
+}: {
+  fixture: FixtureT;
+  market: MarketT;
+  onPick: (outcome: string) => void;
+  onOpenFixture: () => void;
+}) {
   return (
-    <section className="relative overflow-hidden bg-kickr-navy-surface">
-      <FlagWash home={f.home} away={f.away} />
-      {/* Live wash — yellow only ever means "in play". */}
-      <div className="pointer-events-none absolute -top-40 right-0 h-72 w-2/3 bg-kickr-yellow/10 blur-3xl" />
-
-      <div className="relative mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-x-8 gap-y-6 px-4 py-9 sm:px-6">
-        <div>
-          <LivePill minute={f.minute} />
-          <button onClick={() => onOpen(f)} className="mt-3.5 block text-left">
-            <span className="flex flex-wrap items-center gap-x-4 gap-y-2 font-display text-3xl leading-none text-kickr-cream sm:text-4xl">
-              <span className="inline-flex items-center gap-2.5">
-                <TeamFlag team={f.home} />
-                {f.home}
-              </span>
-              <span className="num text-4xl font-bold text-kickr-yellow sm:text-5xl">{f.score.join("–")}</span>
-              <span className="inline-flex items-center gap-2.5">
-                {f.away}
-                <TeamFlag team={f.away} />
-              </span>
-            </span>
-          </button>
-        </div>
-        <button
-          onClick={() => onOpen(f)}
-          className="rounded-full bg-kickr-yellow px-5 py-2.5 text-sm font-bold text-kickr-navy transition-transform hover:-translate-y-0.5 active:translate-y-0"
-        >
-          Open all markets →
-        </button>
-      </div>
-
-      {/* Hot markets sit flush on hairlines — the band already supplies the surface. */}
-      <div className="relative border-t border-kickr-navy-line">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          {hot.length ? (
-            <div className="grid gap-px bg-kickr-navy-line sm:grid-cols-3">
-              {hot.map((m) => (
-                <MarketCard key={m.id} market={m} variant="flat" onPick={() => onOpen(f)} />
-              ))}
-            </div>
+    <div className="overflow-hidden rounded-2xl border border-kickr-navy-line bg-kickr-navy-surface transition-colors hover:border-kickr-yellow/40">
+      <button
+        onClick={onOpenFixture}
+        className="flex w-full items-center justify-between gap-3 border-b border-kickr-navy-line px-4 py-2.5 text-left transition-colors hover:bg-kickr-navy-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-kickr-yellow"
+      >
+        <span className="flex min-w-0 items-center gap-2 text-sm text-kickr-cream/90">
+          <TeamFlag team={fixture.home} className="h-4 w-6" />
+          <span className="truncate">{fixture.home}</span>
+          {fixture.status === "live" ? (
+            <span className="num shrink-0 font-semibold text-kickr-yellow">{fixture.score.join("–")}</span>
           ) : (
-            <p className="py-8 text-center text-sm text-kickr-cream-dim">
-              New micro markets open on the next goal…
-            </p>
+            <span className="shrink-0 text-kickr-cream-dim">v</span>
           )}
-        </div>
-      </div>
-    </section>
+          <span className="truncate">{fixture.away}</span>
+          <TeamFlag team={fixture.away} className="h-4 w-6" />
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          {fixture.source === "demo" && (
+            <span className="rounded-full bg-kickr-navy px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kickr-cream-dim">
+              Demo
+            </span>
+          )}
+          {fixture.status === "live" ? (
+            <LivePill minute={fixture.minute} />
+          ) : (
+            <span className="num text-xs text-kickr-cream-dim">
+              {fixture.kickoff_at
+                ? new Date(fixture.kickoff_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+                : "soon"}
+            </span>
+          )}
+        </span>
+      </button>
+      <MarketCard market={market} variant="flat" onPick={onPick} />
+    </div>
   );
 }
 
-function NextKickoffBand({ f, onOpen }: { f: FixtureT; onOpen: (f: FixtureT) => void }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  const secs = Math.max(0, Math.floor((new Date(f.kickoff_at).getTime() - now) / 1000));
+function NoPicks({ mode, onDemo, live }: { mode: Mode; onDemo: () => void; live: boolean }) {
   return (
-    <section className="relative overflow-hidden border-b border-kickr-navy-line bg-kickr-navy-surface">
-      <FlagWash home={f.home} away={f.away} />
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+    <div className="rounded-2xl border border-dashed border-kickr-navy-line px-6 py-16 text-center">
+      <p className="font-display text-xl text-kickr-cream">
+        {live ? "No markets open yet" : mode === "live" ? "Nothing live right now" : "No demo running"}
+      </p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-kickr-cream-dim">
+        {live
+          ? "Micro markets open at kickoff and after every goal — they'll appear here."
+          : mode === "live"
+            ? "Picks appear the moment a real fixture kicks off. Nothing on? Start any match yourself in demo mode."
+            : "Pick any fixture below and it kicks off in a few seconds — priced and settled exactly like the real thing."}
+      </p>
+      {mode === "live" && !live && (
         <button
-          onClick={() => onOpen(f)}
-          className="group flex w-full flex-wrap items-end justify-between gap-x-8 gap-y-6 py-9 text-left"
+          onClick={onDemo}
+          className="mt-6 rounded-full bg-kickr-yellow px-5 py-2.5 text-sm font-bold text-kickr-navy transition-transform hover:-translate-y-0.5 active:translate-y-0"
         >
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-[0.15em] text-kickr-cream-dim">
-              Next kickoff
-            </span>
-            <span className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2 font-display text-3xl leading-none text-kickr-cream sm:text-4xl">
-              <span className="inline-flex items-center gap-2.5">
-                <TeamFlag team={f.home} />
-                {f.home}
-              </span>
-              <span className="text-kickr-cream-dim">v</span>
-              <span className="inline-flex items-center gap-2.5">
-                {f.away}
-                <TeamFlag team={f.away} />
-              </span>
-            </span>
-          </div>
-          <div className="text-right">
-            <span className="num block text-4xl font-bold leading-none text-kickr-yellow sm:text-5xl">
-              {fmtClock(secs)}
-            </span>
-            <span className="mt-2.5 block text-sm text-kickr-cream-dim transition-colors group-hover:text-kickr-cream">
-              Pre-match markets →
-            </span>
-          </div>
+          Try demo mode
         </button>
+      )}
+    </div>
+  );
+}
+
+function DemoPicker({
+  fixtures,
+  running,
+  starting,
+  onStart,
+  compact,
+}: {
+  fixtures: FixtureT[];
+  running: Set<number>;
+  starting: string | null;
+  onStart: (f: FixtureT) => void;
+  compact: boolean;
+}) {
+  const [all, setAll] = useState(false);
+  const shown = all ? fixtures : fixtures.slice(0, 12);
+
+  return (
+    <section className={compact ? "mt-12" : "mt-8"}>
+      <h2 className="font-display text-xl text-kickr-cream">Start a match</h2>
+      <p className="mt-1 text-sm text-kickr-cream-dim">
+        Any fixture, past or upcoming. The simulator prices and settles it live — 90 minutes in about six.
+      </p>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {shown.map((f) => {
+          const isRunning = running.has(demoIdFor(f.txline_fixture_id));
+          return (
+            <div
+              key={f.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-kickr-navy-line bg-kickr-navy-surface px-3 py-2.5"
+            >
+              <span className="flex min-w-0 items-center gap-2 text-sm text-kickr-cream/90">
+                <TeamFlag team={f.home} className="h-4 w-6" />
+                <span className="truncate">{f.home}</span>
+                <span className="shrink-0 text-kickr-cream-dim">v</span>
+                <span className="truncate">{f.away}</span>
+                <TeamFlag team={f.away} className="h-4 w-6" />
+              </span>
+              <button
+                onClick={() => onStart(f)}
+                disabled={starting === f.id}
+                className="shrink-0 rounded-full border border-kickr-yellow/50 px-3 py-1 text-xs font-bold text-kickr-yellow transition-colors hover:bg-kickr-yellow hover:text-kickr-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kickr-yellow disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {starting === f.id ? "Starting…" : isRunning ? "Restart" : "Start"}
+              </button>
+            </div>
+          );
+        })}
       </div>
+
+      {!all && fixtures.length > shown.length && (
+        <button
+          onClick={() => setAll(true)}
+          className="mt-4 text-sm font-semibold text-kickr-cream-dim underline-offset-4 transition-colors hover:text-kickr-cream"
+        >
+          Show all {fixtures.length} fixtures
+        </button>
+      )}
     </section>
   );
 }
 
 // ------------------------------------------------------------- Fixture drawer
-type DrawerTab = "markets" | "live" | "history";
+type DrawerTab = "live" | "history";
 
-function FixtureDrawer({
-  fixture,
-  onClose,
-  onBetPlaced,
-}: {
-  fixture: FixtureT;
-  onClose: () => void;
-  onBetPlaced: (ticket: any) => void;
-}) {
-  const [tab, setTab] = useState<DrawerTab>("markets");
+function FixtureDrawer({ fixture, onClose }: { fixture: FixtureT; onClose: () => void }) {
+  const [tab, setTab] = useState<DrawerTab>("live");
   const [markets, setMarkets] = useState<MarketT[]>([]);
-  const [pick, setPick] = useState<{ market: MarketT; outcome: string } | null>(null);
-  const [settledIds, setSettledIds] = useState<Set<string>>(new Set());
-  const prevStatuses = useRef<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try {
       const r = await api(`/fixtures/${fixture.id}/markets?include=settled`);
-      const next: MarketT[] = r.markets;
-      const newlySettled = new Set<string>();
-      for (const m of next) {
-        const prev = prevStatuses.current[m.id];
-        if (prev && prev !== "settled" && prev !== "voided" && (m.status === "settled" || m.status === "voided")) {
-          newlySettled.add(m.id);
-        }
-        prevStatuses.current[m.id] = m.status;
-      }
-      if (newlySettled.size) {
-        setSettledIds(newlySettled);
-        setTimeout(() => setSettledIds(new Set()), 1000);
-      }
-      setMarkets(next);
+      setMarkets(r.markets);
     } catch {}
   }, [fixture.id]);
 
@@ -336,11 +394,6 @@ function FixtureDrawer({
     return () => unsub();
   }, [fixture.id, load]);
 
-  // Bettable first: a locked market you can't act on shouldn't outrank an open one.
-  const LIVE_ORDER: Record<string, number> = { open: 0, suspended: 1, locked: 2 };
-  const live = markets
-    .filter((m) => m.status in LIVE_ORDER)
-    .sort((a, b) => LIVE_ORDER[a.status] - LIVE_ORDER[b.status]);
   const history = markets.filter((m) => ["settled", "voided"].includes(m.status));
 
   return (
@@ -352,21 +405,23 @@ function FixtureDrawer({
         className="flex max-h-[92vh] w-full flex-col rounded-t-3xl border border-kickr-navy-line bg-kickr-navy sm:max-h-full sm:w-[30rem] sm:rounded-none sm:border-l"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* header */}
         <div className="flex items-start justify-between border-b border-kickr-navy-line px-5 py-4">
           <div>
             <div className="flex items-center gap-2">
               {fixture.status === "live" && <LivePill minute={fixture.minute} />}
-              <h2 className="font-display text-lg text-kickr-cream">
+              <h2 className="flex items-center gap-2 font-display text-lg text-kickr-cream">
+                <TeamFlag team={fixture.home} className="h-4 w-6" />
                 {fixture.home}{" "}
                 {(fixture.status === "live" || fixture.status === "finished") && (
                   <span className="num text-kickr-yellow">{fixture.score.join("–")}</span>
                 )}{" "}
                 {fixture.away}
+                <TeamFlag team={fixture.away} className="h-4 w-6" />
               </h2>
             </div>
             <p className="mt-1 text-xs uppercase tracking-wide text-kickr-cream-dim">
               {fixture.stage} · {fixture.status}
+              {fixture.source === "demo" && " · demo"}
             </p>
           </div>
           <button
@@ -378,9 +433,8 @@ function FixtureDrawer({
           </button>
         </div>
 
-        {/* tabs */}
         <div className="flex border-b border-kickr-navy-line px-2">
-          {(["markets", "live", "history"] as DrawerTab[]).map((t) => (
+          {(["live", "history"] as DrawerTab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -394,33 +448,12 @@ function FixtureDrawer({
           ))}
         </div>
 
-        {/* body */}
         <div className="flex-1 overflow-y-auto p-4">
-          {tab === "markets" && (
-            <div className="grid gap-3">
-              {live.length ? (
-                live.map((m) => (
-                  <MarketCard
-                    key={m.id}
-                    market={m}
-                    justSettled={settledIds.has(m.id)}
-                    onPick={(outcome) => setPick({ market: m, outcome })}
-                  />
-                ))
-              ) : (
-                <p className="py-10 text-center text-sm text-kickr-cream-dim">
-                  No open markets. Micro markets spawn on kickoff and after each goal.
-                </p>
-              )}
-            </div>
-          )}
-
           {tab === "live" && <LiveTab fixture={fixture} />}
-
           {tab === "history" && (
             <div className="grid gap-3">
               {history.length ? (
-                history.map((m) => <MarketCard key={m.id} market={m} justSettled={settledIds.has(m.id)} />)
+                history.map((m) => <MarketCard key={m.id} market={m} />)
               ) : (
                 <p className="py-10 text-center text-sm text-kickr-cream-dim">No settled markets yet.</p>
               )}
@@ -428,19 +461,6 @@ function FixtureDrawer({
           )}
         </div>
       </div>
-
-      {pick && (
-        <StakeSheet
-          market={pick.market}
-          outcome={pick.outcome}
-          onClose={() => setPick(null)}
-          onPlaced={(t) => {
-            setPick(null);
-            onBetPlaced(t);
-            load();
-          }}
-        />
-      )}
     </div>
   );
 }

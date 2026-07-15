@@ -5,7 +5,44 @@ import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { ChipIcon, Wordmark } from "./shared";
 
-export function AppNav({ me, onFaucet }: { me: any; onFaucet?: () => void }) {
+/** Live = the real TxLINE feed. Demo = simulated matches you start yourself.
+ *  A filter, not a server switch — both run at once, so this never hides a
+ *  real match from anyone else. */
+function ModeToggle({ mode, onMode }: { mode: "live" | "demo"; onMode: (m: "live" | "demo") => void }) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Data source"
+      className="flex items-center gap-0.5 rounded-full border border-kickr-navy-line bg-kickr-navy-surface p-0.5"
+    >
+      {(["live", "demo"] as const).map((m) => (
+        <button
+          key={m}
+          role="radio"
+          aria-checked={mode === m}
+          onClick={() => onMode(m)}
+          className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kickr-yellow ${
+            mode === m ? "bg-kickr-yellow text-kickr-navy" : "text-kickr-cream-dim hover:text-kickr-cream"
+          }`}
+        >
+          {m}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function AppNav({
+  me,
+  onFaucet,
+  mode,
+  onMode,
+}: {
+  me: any;
+  onFaucet?: () => void;
+  mode?: "live" | "demo";
+  onMode?: (m: "live" | "demo") => void;
+}) {
   const { logout, handle } = useAuth();
   const [menu, setMenu] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -25,6 +62,7 @@ export function AppNav({ me, onFaucet }: { me: any; onFaucet?: () => void }) {
           <Wordmark className="text-2xl" />
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">
+          {mode && onMode && <ModeToggle mode={mode} onMode={onMode} />}
           {me && (
             <span className="num flex items-center gap-1.5 rounded-full border border-kickr-navy-line bg-kickr-navy-surface px-3 py-1.5 text-sm font-semibold text-kickr-cream">
               <ChipIcon /> {me.balance?.toLocaleString()}
