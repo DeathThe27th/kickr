@@ -97,4 +97,11 @@ class TxLineClient:
         if not data:
             return None
         records = data if isinstance(data, list) else [data]
-        return normalize_score(records[-1]) if records else None
+        if not records:
+            return None
+        # The snapshot is one record per action type, in no meaningful order —
+        # the last element is whichever action sorted last (often `weather`,
+        # which carries StatusId 1 and a stopped clock). Pick by timestamp.
+        newest = max(records, key=lambda r: r.get("Ts") or 0)
+        p1_home = self._p1_home.get(txline_fixture_id, True)
+        return normalize_score(newest, p1_home, records)
