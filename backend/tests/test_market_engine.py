@@ -1,14 +1,14 @@
 """Trigger/settlement engine integration test: a synthetic match walks through
 pre-match -> kickoff -> goal -> window expiry -> HT -> FT and every market
 lifecycle rule from build.md §4 is asserted along the way."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app.ledger import balance, ensure_user, place_bet
-from app.markets.engine import MarketEngine
+from app.markets.engine import MarketEngine, TickEvents
 from app.models import Base, Bet, Fixture, Market, Settlement
 from app.pricing.engine import PricedState
 from app.txline.types import NormMatchState
@@ -140,6 +140,88 @@ def test_stale_odds_suspend_and_recover(session):
 
     engine.tick(session, fixture, state(7, 0, 0), priced(), cycle=0)
     assert m1.status == "open"
+
+
+def test_reap_stranded_voids_and_refunds(session):
+    """A match the feed abandoned leaves markets open and bets 'open' forever;
+    reap_stranded() voids those markets and refunds every stake."""
+    old_kickoff = datetime.now(timezone.utc) - timedelta(hours=6)
+    fixture = Fixture(txline_fixture_id=1, home="A", away="B",
+                      kickoff_at=old_kickoff, stage="group")
+    session.add(fixture)
+    session.flush()
+    engine = MarketEngine()
+    engine.tick(session, fixture, state(0, 0, 0, "upcoming"), priced(), cycle=0)
+    engine.tick(session, fixture, state(5, 0, 0), priced(), cycle=0)
+    ms = markets_by_template(session)
+
+    user = ensure_user(session, "did:test", "tester")
+    session.flush()
+    start_balance = balance(session, user.id)
+    bet = place_bet(session, user, ms["M1"], "Yes", 100, ms["M1"].prices["Yes"])
+    session.flush()
+    assert balance(session, user.id) == start_balance - 100
+
+    # Feed goes quiet: the fixture is stuck 'live' hours past kickoff.
+    reaped = engine.reap_stranded(session, TickEvents())
+    session.flush()
+
+    assert reaped == [fixture.id]
+    assert fixture.status == "finished"
+    assert all(m.status == "voided" for m in markets_by_template(session).values())
+    assert session.get(Bet, bet.id).status == "voided"
+    assert balance(session, user.id) == start_balance  # stake refunded
+
+    # Idempotent: a second pass finds nothing and touches no balance.
+    assert engine.reap_stranded(session, TickEvents()) == []
+    assert balance(session, user.id) == start_balance
+
+
+def test_reap_stranded_demo_when_sim_gone(session):
+    """A demo left mid-replay with no active sim strands its bets; reap voids it
+    when its id isn't in the active set, and protects it when it is."""
+    fixture = Fixture(txline_fixture_id=900001, home="A", away="B",
+                      kickoff_at=datetime.now(timezone.utc), stage="group", source="demo")
+    session.add(fixture)
+    session.flush()
+    engine = MarketEngine()
+    engine.tick(session, fixture, state(0, 0, 0, "upcoming"), priced(), cycle=0)
+    engine.tick(session, fixture, state(5, 0, 0), priced(), cycle=0)
+    ms = markets_by_template(session)
+    user = ensure_user(session, "did:test", "tester")
+    session.flush()
+    start_balance = balance(session, user.id)
+    bet = place_bet(session, user, ms["M1"], "Yes", 100, ms["M1"].prices["Yes"])
+    session.flush()
+
+    # Sim still replaying -> protected, nothing reaped.
+    assert engine.reap_stranded(session, TickEvents(), active_demo_ids={900001}) == []
+    assert session.get(Bet, bet.id).status == "open"
+    # Default (active_demo_ids=None) protects all demos too.
+    assert engine.reap_stranded(session, TickEvents()) == []
+    assert session.get(Bet, bet.id).status == "open"
+
+    # Sim gone -> stranded demo reaped and refunded.
+    reaped = engine.reap_stranded(session, TickEvents(), active_demo_ids=set())
+    session.flush()
+    assert reaped == [fixture.id]
+    assert session.get(Bet, bet.id).status == "voided"
+    assert balance(session, user.id) == start_balance
+
+
+def test_reap_ignores_live_match_within_window(session):
+    """A genuinely in-play match (kickoff recent) must not be reaped."""
+    fixture = Fixture(txline_fixture_id=1, home="A", away="B",
+                      kickoff_at=datetime.now(timezone.utc), stage="group")
+    session.add(fixture)
+    session.flush()
+    engine = MarketEngine()
+    engine.tick(session, fixture, state(0, 0, 0, "upcoming"), priced(), cycle=0)
+    engine.tick(session, fixture, state(5, 0, 0), priced(), cycle=0)
+
+    assert engine.reap_stranded(session, TickEvents()) == []
+    assert fixture.status == "live"
+    assert any(m.status == "open" for m in markets_by_template(session).values())
 
 
 def test_max_four_micro_markets(session):

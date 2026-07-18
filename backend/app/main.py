@@ -6,7 +6,7 @@ import json
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -17,7 +17,7 @@ from .api.routes import router, runtime
 from .api.stream import broker
 from .config import settings
 from .db import SessionLocal, init_db, session_scope
-from .markets.engine import MarketEngine
+from .markets.engine import STALE_LIVE_AFTER, MarketEngine, TickEvents
 from .models import Fixture, Market, OddsSnapshot
 from .pricing.engine import price_fixture
 from .receipts import ReceiptQueue
@@ -28,10 +28,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname
 log = logging.getLogger("kickr.main")
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-
-# Generous upper bound on a real match: 90' + stoppage + extra time + penalties
-# runs to roughly 3h. Past this, a fixture still marked 'live' is stale data.
-STALE_LIVE_AFTER = timedelta(hours=4)
 
 
 def _seed_fixtures(source) -> None:
@@ -110,11 +106,21 @@ class Brain:
         # A sim that was just started needs its fixture row promptly, so refresh
         # fast whenever one is running rather than waiting out the live interval.
         refresh_every = 5 if (settings.demo_mode or REGISTRY.active()) else 600
-        if now - self._last_fixture_refresh >= refresh_every:
+        just_refreshed = now - self._last_fixture_refresh >= refresh_every
+        if just_refreshed:
             _seed_fixtures(self.source)
             self._last_fixture_refresh = now
 
         with session_scope() as session:
+            # Self-heal on the same cadence the watchdog force-finishes stale
+            # fixtures: void any markets left bettable on a match the feed
+            # abandoned, refunding stakes. Without this those bets sit 'open'
+            # forever (settlement only runs while a fixture is tracked).
+            if just_refreshed:
+                reap_ev = TickEvents()
+                active_demo_ids = {s.demo_id for s in REGISTRY.active()}
+                self.engine.reap_stranded(session, reap_ev, STALE_LIVE_AFTER, active_demo_ids)
+                self._drain(session, reap_ev.events, events)
             fixtures = session.execute(select(Fixture)).scalars().all()
             wall_now = datetime.now(timezone.utc)
             for fixture in fixtures:
@@ -161,14 +167,19 @@ class Brain:
 
                 cycle = getattr(self.source, "cycle", 0)
                 tick_events = self.engine.tick(session, fixture, state, priced, cycle)
-                for ev in tick_events:
-                    if ev["event"] == "receipt":
-                        market = session.get(Market, ev["market_id"])
-                        if market is not None:
-                            self.receipts.enqueue_for_market(session, market, ev["phase"])
-                    else:
-                        events.append(ev)
+                self._drain(session, tick_events, events)
         return events
+
+    def _drain(self, session, tick_events: list[dict], events: list[dict]) -> None:
+        """Route engine events: receipts get queued for on-chain proof, the rest
+        are collected for SSE publication by the caller."""
+        for ev in tick_events:
+            if ev["event"] == "receipt":
+                market = session.get(Market, ev["market_id"])
+                if market is not None:
+                    self.receipts.enqueue_for_market(session, market, ev["phase"])
+            else:
+                events.append(ev)
 
     def _persist_snapshots(self, session, fixture: Fixture, odds) -> None:
         """§2: persist raw snapshots (needed for replay + divergence history).

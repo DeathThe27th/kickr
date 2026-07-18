@@ -415,6 +415,50 @@ def demo_restart(x_admin_key: str = Header(default="")):
     return {"ok": True, "cycle": source.cycle}
 
 
+@router.post("/admin/reap-stranded")
+def reap_stranded(
+    x_admin_key: str = Header(default=""),
+    session: Session = Depends(get_session),
+):
+    """Void + refund markets stuck open on matches that will never settle:
+    real matches the feed abandoned, and demo replays whose sim is gone. A demo
+    still actively replaying (in REGISTRY) and genuinely in-play/upcoming real
+    matches are protected.
+
+    The tick loop self-heals on its refresh cadence (up to ~10 min); this runs
+    the same reaper on demand so a stuck match can be cleared immediately.
+    """
+    if x_admin_key != settings.admin_key:
+        raise HTTPException(403, "bad admin key")
+    engine = runtime.get("engine")
+    if engine is None:
+        raise HTTPException(400, "engine not ready")
+
+    from ..markets.engine import TickEvents
+
+    ev = TickEvents()
+    active_demo_ids = {s.demo_id for s in REGISTRY.active()}
+    reaped = engine.reap_stranded(session, ev, active_demo_ids=active_demo_ids)
+    session.flush()
+    receipts = runtime.get("receipts")
+    markets_voided = 0
+    for e in ev.events:
+        if e["event"] == "receipt":
+            market = session.get(Market, e["market_id"])
+            if market is not None and receipts is not None:
+                receipts.enqueue_for_market(session, market, e["phase"])
+        else:
+            if e["event"] == "market_settled":
+                markets_voided += 1
+            broker.publish(e)
+    return {
+        "ok": True,
+        "fixtures_voided": len(reaped),
+        "fixture_ids": reaped,
+        "markets_voided": markets_voided,
+    }
+
+
 # ---------------------------------------------------------------------- misc
 @router.get("/stats")
 def stats(session: Session = Depends(get_session)):
