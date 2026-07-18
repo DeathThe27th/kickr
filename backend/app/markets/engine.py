@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -22,6 +22,11 @@ from ..pricing.engine import PricedState, p_goal_in_window, quote, quote_outcome
 from ..txline.types import NormMatchState
 
 log = logging.getLogger("kickr.markets")
+
+# Generous upper bound on a real match: 90' + stoppage + extra time + penalties
+# runs to roughly 3h. Past this, a fixture still marked 'live' is stale data.
+# Shared with main.py's fixture watchdog so the two rules can't drift.
+STALE_LIVE_AFTER = timedelta(hours=4)
 
 
 @dataclass
@@ -535,6 +540,74 @@ class MarketEngine:
         )
         for m in markets:
             self._settle(session, m, None, {"reason": reason}, ev or TickEvents())
+
+    def reap_stranded(
+        self,
+        session: Session,
+        ev: TickEvents,
+        stale_after: timedelta = STALE_LIVE_AFTER,
+        active_demo_ids: set[int] | None = None,
+    ) -> list[str]:
+        """Void markets left bettable on matches that will never settle.
+
+        Settlement only ever runs while a fixture is tracked (main.tick), so any
+        match that stops being tracked with open markets strands its bets 'open'
+        forever. We have no trustworthy result for an abandoned match, so every
+        open bet is refunded (void). Idempotent: voided markets are not selected
+        again. Returns the fixture ids reaped.
+
+        Two stranding paths, both handled here:
+        * Real feed goes quiet mid-match — the fixture is force-finished by the
+          watchdog (main._seed_fixtures) or dropped from the feed and left
+          'live'. Reaped once finished, or once 'live' is `stale_after` past
+          kickoff. A genuinely in-play or upcoming real match is left alone.
+        * A demo sim is gone (server restart, /demo stop) while its replay left
+          markets open. `active_demo_ids` is the set of demos still replaying
+          (REGISTRY) — those settle themselves on tick and are protected; any
+          other demo fixture is stranded and reaped. If None, ALL demos are
+          protected (the conservative default for callers without the set).
+
+        A cleanly finished match has no lingering open markets
+        (_settle_full_time settles them all), so this never touches one.
+        """
+        now = datetime.now(timezone.utc)
+        cutoff = now - stale_after
+        fixtures = (
+            session.execute(
+                select(Fixture).where(
+                    Fixture.id.in_(
+                        select(Market.fixture_id).where(
+                            Market.status.in_(["open", "suspended", "locked"])
+                        )
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        reaped: list[str] = []
+        for fixture in fixtures:
+            if fixture.source == "demo":
+                # a demo still replaying settles its own markets on tick
+                if active_demo_ids is None or fixture.txline_fixture_id in active_demo_ids:
+                    continue
+                reason = "demo_abandoned"
+            else:
+                kickoff = fixture.kickoff_at.replace(tzinfo=timezone.utc)
+                # leave genuinely in-play (live within window) and not-yet-started
+                # (upcoming) real matches alone — only reap the stranded ones.
+                if fixture.status == "upcoming":
+                    continue
+                if fixture.status == "live" and kickoff > cutoff:
+                    continue
+                if fixture.status == "live":
+                    fixture.status = "finished"
+                reason = "feed_quiet_abandoned"
+            self.void_fixture(session, fixture, reason, ev)
+            reaped.append(fixture.id)
+        if reaped:
+            log.warning("reaped %d stranded fixture(s): %s", len(reaped), reaped)
+        return reaped
 
     def _settle(
         self, session: Session, market: Market, winner: str | None, evidence: dict, ev: TickEvents
